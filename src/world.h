@@ -7,6 +7,7 @@
 #include "cube.h"
 #include "chunk.h"
 #include "engine/noise/perlin.h"
+#include "customPerlin.h"
 
 class MWorld
 {
@@ -19,10 +20,10 @@ public :
 	#ifdef _DEBUG
 	static const int MAT_SIZE = 1; //en nombre de chunks
 	#else
-	static const int MAT_SIZE = 3; //en nombre de chunks
+	static const int MAT_SIZE = 6; //en nombre de chunks
 	#endif // DEBUG
 
-	static const int MAT_HEIGHT = 1; //en nombre de chunks
+	static const int MAT_HEIGHT = 3; //en nombre de chunks
 	static const int MAT_SIZE_CUBES = (MAT_SIZE * MChunk::CHUNK_SIZE);
 	static const int MAT_HEIGHT_CUBES = (MAT_HEIGHT * MChunk::CHUNK_SIZE);
 	static const int MAT_SIZE_METERS = (MAT_SIZE * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE);
@@ -140,7 +141,7 @@ public :
 
 		srand(seed);
 
-		YPerlin noise;
+		CustomPerlin noise;
 		
 		//Reset du monde
 		for(int x=0;x<MAT_SIZE;x++)
@@ -150,20 +151,57 @@ public :
 
 		//Générer ici le monde en modifiant les cubes
 		//Utiliser getCubes()
-		for (int z = 0; z < 16; z++)
-			for (int y = 0; y < 16; y++)
-				for (int x = 0; x < 16; x++)
+		int minSurfaceHeight = MAT_HEIGHT_CUBES * 0.5;
+		int maxSurfaceHeight = MAT_HEIGHT_CUBES;
+		float waterHeightF = MAT_HEIGHT_CUBES * 0.53;
+		int waterHeight = waterHeightF;
+
+		int minStoneHeight = 3;
+		int maxStoneHeight = 7;
+		
+		int z;
+		for (int x = 0; x < MAT_SIZE_CUBES; x++)
+		{
+			for (int y = 0; y < MAT_SIZE_CUBES; y++)
+			{
+				float heightNoiseValue = noise.sample((x + 177448), (y - 483542));
+				heightNoiseValue = heightNoiseValue * heightNoiseValue;
+				float stoneNoiseValue = noise.sampleSimple((x - 1245253) * 57.1433545, (y + 12347) * 72.1585211);
+
+				float endHeightF = heightNoiseValue * maxSurfaceHeight + (1 - heightNoiseValue) * minSurfaceHeight;
+				int endHeight = endHeightF;
+				int sandHeight = waterHeight + 1 + (((endHeightF - endHeight) < 0.5) ? 2 : 1);
+
+				int stoneHeight = endHeight - (stoneNoiseValue * maxStoneHeight + (1 - stoneNoiseValue) * minStoneHeight);
+				
+				for (z = endHeight - 1; z >= 0; z--)
 				{
 					MCube* cube = getCube(x, y, z);
-					float noiseValue = noise.sample((x + 187448) * 0.15448452, (y - 484542) * 0.15448452, (z - 32151) * 0.15448452);
-
-					if (noiseValue > 0.55f)
-						cube->setType(MCube::CUBE_HERBE);
-					else if (noiseValue > 0.5f)
+					if (z <= stoneHeight)
+					{
+						cube->setType(MCube::CUBE_PIERRE);
+					}
+					else if (endHeight <= sandHeight && z <= sandHeight)
+					{
+						cube->setType(MCube::CUBE_SABLE_01);
+					}
+					else if (z < endHeight - 1)
+					{
 						cube->setType(MCube::CUBE_TERRE);
-					else if (noiseValue > 0.45f)
-						cube->setType(MCube::CUBE_EAU);
+					}
+					else
+					{
+						cube->setType(MCube::CUBE_HERBE);
+					}
 				}
+
+				for (z = endHeight; z <= waterHeight; z++)
+				{
+					MCube* cube = getCube(x, y, z);
+					cube->setType(MCube::CUBE_EAU);
+				}
+			}
+		}
 
 
 		for(int x=0;x<MAT_SIZE;x++)
@@ -388,8 +426,8 @@ public :
 	{
 		glPushMatrix();
 		glUseProgram(shader);
+		
 		GLuint cubeColor = glGetUniformLocation(shader, "cube_color");
-
 		for (int z = 0; z < MAT_HEIGHT_CUBES; z++)
 			for (int y = 0; y < MAT_SIZE_CUBES; y++)
 				for (int x = 0; x < MAT_SIZE_CUBES; x++)
@@ -417,13 +455,37 @@ public :
 		glPopMatrix();
 	}
 
-	void render_world_vbo(bool debug,bool doTransparent)
+	void render_world_vbo(bool debug, bool doTransparent)
 	{
 		glDisable(GL_BLEND);
 		//Dessiner les chunks opaques
+		for (int x = 0; x < MAT_SIZE; x++)
+			for (int y = 0; y < MAT_SIZE; y++)
+				for (int z = 0; z < MAT_HEIGHT; z++)
+				{
+					glPushMatrix();
+					glTranslatef(x * MChunk::CHUNK_SIZE, y * MChunk::CHUNK_SIZE, z * MChunk::CHUNK_SIZE);
+					YRenderer::getInstance()->updateMatricesFromOgl();
+					YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
+					Chunks[x][y][z]->render(false);
+					glPopMatrix();
+				}
 				
 		glEnable(GL_BLEND);
 		//Dessiner les chunks transparents
+		for (int x = 0; x < MAT_SIZE; x++)
+			for (int y = 0; y < MAT_SIZE; y++)
+				for (int z = 0; z < MAT_HEIGHT; z++)
+				{
+					glPushMatrix();
+					glTranslatef(x * MChunk::CHUNK_SIZE, y * MChunk::CHUNK_SIZE, z * MChunk::CHUNK_SIZE);
+					YRenderer::getInstance()->updateMatricesFromOgl();
+					YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
+					Chunks[x][y][z]->render(true);
+					glPopMatrix();
+				}
+
+		glDisable(GL_BLEND);
 	}
 
 	/**

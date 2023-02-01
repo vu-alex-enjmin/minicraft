@@ -1,5 +1,5 @@
-#ifndef __YOCTO__ENGINE_TEST__
-#define __YOCTO__ENGINE_TEST__
+#ifndef __YOCTO__ENGINE_MINICRAFT__
+#define __YOCTO__ENGINE_MINICRAFT__
 
 #include <cmath>
 
@@ -16,6 +16,7 @@ public:
 	GLuint ShaderCubeDebug;
 	GLuint ShaderCube;
 	GLuint ShaderSun;
+	GLuint ShaderWorld;
 	int pointCount;
 	int64_t timeOffset = 0;
 	
@@ -33,6 +34,7 @@ public:
 		ShaderCubeDebug = Renderer->createProgram("shaders/cube_debug");
 		ShaderCube = Renderer->createProgram("shaders/cube");
 		ShaderSun = Renderer->createProgram("shaders/sun");
+		ShaderWorld = YRenderer::getInstance()->createProgram("shaders/world");
 	}
 
 	struct Point
@@ -170,7 +172,7 @@ public:
 
 	void update(float elapsed)
 	{
-		float speed = 10.0f;
+		float speed = 100.0f;
 
 		float horizontal = 0.0f;
 		if (qKeyDown)
@@ -240,9 +242,9 @@ public:
 		float sawTime = 1.0 - (scaledTime - int(scaledTime));
 		float sinTime = std::sin(sawTime * M_PI * 0.5);
 
-		// Calcul et mise à jour de la couleur du soleil et du ciel
+		// Calcul et mise à jour de la couleur du soleil, du ciel et d'ambiance
 		float distToZenith = std::abs(sunProgressT - 0.5);
-		float distToZenithTransitionColorRange = 0.1f;
+		float distToZenithTransitionColorRange = 0.05f;
 		float sunAppearanceColorT = saturate((0.5 - distToZenith) / distToZenithTransitionColorRange);
 
 		/*
@@ -255,14 +257,15 @@ public:
 		YColor sunAppearanceColor(1., 0.1, 0, 1);
 		YColor sunColor = sunAppearanceColor.interpolate(baseSunColor, sunAppearanceColorT);
 		YColor black = YColor(0, 0, 0, 1);
-		sunColor = sunColor.interpolate(black, 1 - sinTime);
+		YColor white = YColor(1, 1, 1, 1);
+		// sunColor = sunColor.interpolate(black, 1 - sinTime);
 		
 		float sunAppearanceSkyColorT = (0.5 - distToZenith) / distToZenithTransitionColorRange;
 		// std::cout << sunProgressT << " " << distToZenith << " " << sunAppearanceSkyColorT << std::endl;
 
-		YColor brightSkyColor(0.2, 0.7, 1, 1);
-		YColor darkSkyColor(0, 0.05, 0.2, 1);
-		YColor sunAppearanceSkyColor(0.7, 0.2, 0, 1);
+		YColor brightSkyColor(0.4, 0.85, 1, 1);
+		YColor darkSkyColor(0.1, 0.15, 0.4, 1);
+		YColor sunAppearanceSkyColor(0.8, 0.5, 0.3, 1);
 
 		YColor skyColor;
 		if (sunAppearanceSkyColorT > 0)
@@ -274,6 +277,19 @@ public:
 			skyColor = sunAppearanceSkyColor.interpolate(darkSkyColor, -sunAppearanceSkyColorT);
 		}
 		Renderer->setBackgroundColor(skyColor);
+
+		YColor brightAmbientColor(0.6, 0.6, 0.6, 1);
+		YColor darkAmbientColor(0.15, 0.15, 0.3, 1);
+		YColor sunAppearanceAmbientColor(0.4, 0.5, 0.3, 1);
+		YColor ambientColor;
+		if (sunAppearanceSkyColorT > 0)
+		{
+			ambientColor = sunAppearanceAmbientColor.interpolate(brightAmbientColor, sunAppearanceSkyColorT);
+		}
+		else
+		{
+			ambientColor = sunAppearanceAmbientColor.interpolate(darkAmbientColor, -sunAppearanceSkyColorT);
+		}
 		
 		// Calcul et application de la transformation du soleil
 		float scale = 0.25f + 0.125 * sinTime;
@@ -281,14 +297,18 @@ public:
 		float sunRiseAngle = 90.0f;
 		float sunSetAngle = -90.0f;
 		float sunAngle = lerp(sunRiseAngle, sunSetAngle, sunProgressT);
+
+		YVec3f sunDirection = YVec3f(0, 0, 1).rotate(YVec3f(-1, 0.5, 0).normalize(), sunAngle * M_PI / 180.0f);
+		YVec3f sunNormal = sunDirection.cross(YVec3f(1, 0, 0));
 		
+		glDisable(GL_DEPTH_TEST);
 		glPushMatrix();
-			YVec3<float> camPos = Renderer->Camera->Position;
-			// glTranslatef(camPos.X, camPos.Y, camPos.Z);
-			glRotatef(sunAngle, -1, 1, 0);
-			// glTranslatef(0, 0, 20);
+			YVec3f camPos = Renderer->Camera->Position;
+			glTranslatef(camPos.X, camPos.Y, camPos.Z);
+			glRotatef(sunAngle, -1, 0.5, 0);
+			glTranslatef(0, 0, 20);
 			glScalef(scale, scale, scale);
-			glRotatef(-sunAngle, -1, 1, 0);
+			glRotatef(-sunAngle, -1, 0.5, 0);
 
 			glRotatef(360 * time * 1.25, 1, 0, 0);
 			glRotatef(360 * time * 2, 0, 1, 0);
@@ -296,15 +316,38 @@ public:
 
 			// Tracé du soleil
 			glUseProgram(ShaderSun); //Demande au GPU de charger ces shaders
-			GLuint var = glGetUniformLocation(ShaderSun, "sun_color");
-			glUniform3f(var, sunColor.R, sunColor.V, sunColor.B);
+			GLuint shaderSun_sunColor = glGetUniformLocation(ShaderSun, "sun_color");
+			glUniform3f(shaderSun_sunColor, sunColor.R, sunColor.V, sunColor.B);
+			
+			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
+			Renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
+			VboCube->render(); //Demande le rendu du VBO
+
+			YColor internalSunColor = sunColor.interpolate(white, 0.25);
+			glUniform3f(shaderSun_sunColor, internalSunColor.R, internalSunColor.V, internalSunColor.B);
+			glScalef(0.8, 0.8, 0.8);
 			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
 			Renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
 			VboCube->render(); //Demande le rendu du VBO
 		glPopMatrix();
+		glEnable(GL_DEPTH_TEST);
 
 		glPushMatrix();
-			World->render_world_basic(ShaderCube, VboCube);
+			// Send "global" parameters to shader
+			glUseProgram(ShaderWorld);
+			GLuint shaderWorld_sunColor = glGetUniformLocation(ShaderWorld, "sun_color");
+			glUniform3f(shaderWorld_sunColor, sunColor.R, sunColor.V, sunColor.B);
+			GLuint shaderWorld_ambientColor = glGetUniformLocation(ShaderWorld, "ambient_color");
+			glUniform3f(shaderWorld_ambientColor, ambientColor.R, ambientColor.V, ambientColor.B);
+			GLuint shaderWorld_sunDirection = glGetUniformLocation(ShaderWorld, "sun_direction");
+			glUniform3f(shaderWorld_sunDirection, sunDirection.X, sunDirection.Y, sunDirection.Z);
+
+			YVec3f cameraPos = Renderer->Camera->Position;
+			GLuint shaderWorld_cameraPos = glGetUniformLocation(ShaderWorld, "camera_pos");
+			glUniform3f(shaderWorld_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
+
+			// Render world
+			World->render_world_vbo(false, false);
 		glPopMatrix();
 	}
 

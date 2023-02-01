@@ -65,6 +65,9 @@
     <ClInclude Include="..\src\engine\render\camera.h">
       <Filter>Fichiers d%27en-tête\engine\render</Filter>
     </ClInclude>
+    <ClInclude Include="src\customPerlin.h">
+      <Filter>Fichiers d%27en-tête\engine\noise</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -75,6 +78,9 @@
     </ClCompile>
     <ClCompile Include="..\src\engine\render\vbo.cpp">
       <Filter>Fichiers sources\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\customPerlin.cpp">
+      <Filter>Fichiers d%27en-tête\engine\noise</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

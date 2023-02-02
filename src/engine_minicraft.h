@@ -13,6 +13,7 @@ class MEngineMinicraft : public YEngine {
 public:
 	YVbo* VboCube;
 	MWorld* World;
+	MAvatar* avatar;
 	GLuint ShaderCubeDebug;
 	GLuint ShaderCube;
 	GLuint ShaderSun;
@@ -145,9 +146,9 @@ public:
 
 		World = new MWorld();
 		World->init_world(0);
+
+		avatar = new MAvatar(Renderer->Camera, World);
 	}
-
-
 
 	void addQuad(Point& a, Point& b, Point& c, Point& d)
 	{
@@ -186,14 +187,27 @@ public:
 		if (zKeyDown)
 			vertical += 1.0f;
 
+		/*
 		Renderer->Camera->move(
 			(Renderer->Camera->RightVec * horizontal +
 			Renderer->Camera->Direction * vertical) * speed * elapsed
 		);
+		*/
+
+		avatar->gauche = qKeyDown;
+		avatar->droite = dKeyDown;
+		avatar->recule = sKeyDown;
+		avatar->avance = zKeyDown;
+		if (firstPerson)
+			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, avatar->Height * 0.85 * 0.5 * MCube::CUBE_SIZE));
+		avatar->update(elapsed);
 	}
 
 	void renderObjects()
 	{
+		if (firstPerson)
+			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, avatar->Height * 0.85 * 0.5 * MCube::CUBE_SIZE));
+
 		glUseProgram(0);
 
 		//Rendu des axes
@@ -349,6 +363,18 @@ public:
 			// Render world
 			World->render_world_vbo(false, false);
 		glPopMatrix();
+
+		glPushMatrix();
+			glUseProgram(ShaderCube);
+			GLuint shaderCube_cubeColor = glGetUniformLocation(ShaderCube, "cube_color");
+			glUniform4f(shaderCube_cubeColor, 1.0f, 1.0f, 1.0f, 1.0f);
+			glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
+			glScalef(0.5, 0.5, 0.5);
+			glScalef(avatar->Width, avatar->Width, avatar->Height);
+			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
+			Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
+			VboCube->render(); //Demande le rendu du VBO
+		glPopMatrix();
 	}
 
 	int64_t computeTimeMillis(WORD hour, WORD minute, WORD second, WORD milliseconds)
@@ -391,6 +417,8 @@ public:
 	bool qKeyDown;
 	bool sKeyDown;
 	bool dKeyDown;
+	
+	bool firstPerson;
 
 	void keyPressed(int key, bool special, bool down, int p1, int p2)
 	{
@@ -404,6 +432,12 @@ public:
 			sKeyDown = down;
 		else if (key == 'd' || key == 'D')
 			dKeyDown = down;
+		else if ((key == 't' || key == 'T') && down)
+			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, 4));
+		else if (key == ' ' && down)
+			avatar->Jump = true;
+		else if ((key == 'c' || key == 'C') && down)
+			firstPerson = !firstPerson;
 	}
 
 	void mouseWheel(int wheel, int dir, int x, int y, bool inUi)

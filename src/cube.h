@@ -62,7 +62,7 @@ public :
 	public :
 		YVec3f _NavDir;
 		float debugValue;
-		static const int CUBE_SIZE = 2;
+		static const int CUBE_SIZE = 1;
 		
 		MCube()
 		{

@@ -464,7 +464,11 @@ public :
 				for (int z = 0; z < MAT_HEIGHT; z++)
 				{
 					glPushMatrix();
-					glTranslatef(x * MChunk::CHUNK_SIZE, y * MChunk::CHUNK_SIZE, z * MChunk::CHUNK_SIZE);
+					glTranslatef(
+						x * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE, 
+						y * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE, 
+						z * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE
+					);
 					YRenderer::getInstance()->updateMatricesFromOgl();
 					YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
 					Chunks[x][y][z]->render(false);
@@ -478,7 +482,11 @@ public :
 				for (int z = 0; z < MAT_HEIGHT; z++)
 				{
 					glPushMatrix();
-					glTranslatef(x * MChunk::CHUNK_SIZE, y * MChunk::CHUNK_SIZE, z * MChunk::CHUNK_SIZE);
+					glTranslatef(
+						x * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
+						y * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
+						z * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE
+					);
 					YRenderer::getInstance()->updateMatricesFromOgl();
 					YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
 					Chunks[x][y][z]->render(true);

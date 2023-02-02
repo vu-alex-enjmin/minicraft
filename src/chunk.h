@@ -173,15 +173,15 @@ class MChunk
 			YVec3f corners[8]
 			{
 				// BOTTOM
-				YVec3f(x, y, z),
-				YVec3f(x + 1, y, z),
-				YVec3f(x + 1, y + 1, z),
-				YVec3f(x, y + 1, z),
+				YVec3f(x, y, z) * MCube::CUBE_SIZE,
+				YVec3f(x + 1, y, z) * MCube::CUBE_SIZE,
+				YVec3f(x + 1, y + 1, z) * MCube::CUBE_SIZE,
+				YVec3f(x, y + 1, z) * MCube::CUBE_SIZE,
 				// TOP
-				YVec3f(x, y, z + 1),
-				YVec3f(x + 1, y, z + 1),
-				YVec3f(x + 1, y + 1, z + 1),
-				YVec3f(x, y + 1, z + 1)
+				YVec3f(x, y, z + 1) * MCube::CUBE_SIZE,
+				YVec3f(x + 1, y, z + 1) * MCube::CUBE_SIZE,
+				YVec3f(x + 1, y + 1, z + 1) * MCube::CUBE_SIZE,
+				YVec3f(x, y + 1, z + 1) * MCube::CUBE_SIZE
 			};
 			int vertexCount = 0;
 			float type = cube.getType();

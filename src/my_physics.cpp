@@ -15,7 +15,6 @@ if (lineCubeFaceIntersection( \
 	} \
 }
 
-
 bool linePlaneIntersection(
 	const YVec3f &lineOrigin, const YVec3f &lineDirection,
 	const YVec3f &planePoint, const YVec3f &planeNormal,

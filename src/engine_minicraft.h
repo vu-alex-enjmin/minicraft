@@ -6,6 +6,7 @@
 
 #include "engine/engine.h"
 #include "my_physics.h"
+#include "sky_renderer.h"
 
 #include "avatar.h"
 #include "world.h"
@@ -16,6 +17,7 @@ public:
 	YVbo* VboCube;
 	MWorld* World;
 	MAvatar* avatar;
+	SkyRenderer skyRenderer;
 	GLuint ShaderCubeDebug;
 	GLuint ShaderCube;
 	GLuint ShaderSun;
@@ -37,11 +39,12 @@ public:
 	}
 
 	/*HANDLERS GENERAUX*/
-	void loadShaders() {
+	void loadShaders() 
+	{
 		ShaderCubeDebug = Renderer->createProgram("shaders/cube_debug");
 		ShaderCube = Renderer->createProgram("shaders/cube");
-		ShaderSun = Renderer->createProgram("shaders/sun");
-		ShaderWorld = YRenderer::getInstance()->createProgram("shaders/world");
+		ShaderWorld = Renderer->createProgram("shaders/world");
+		skyRenderer.loadShaders();
 	}
 
 	struct Point
@@ -218,290 +221,166 @@ public:
 	{
 		glUseProgram(0);
 
-		//Rendu des axes
+		// Rendu des axes
+		renderAxii();
+
+		// Rendu du ciel et du soleil
+		skyRenderer.updateSkyValues(timeOffset);
+		skyRenderer.render(VboCube, 1, 10);
+
+		// Rendu de l'avatar
+		renderAvatar();
+
+		// Rendu du monde
+		renderWorld();
+
+		// Calcul et rendu de la cible de picking
+		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+		drawIntersectedCubeSide();
+	}
+
+	void renderAxii()
+	{
 		glDisable(GL_LIGHTING);
 		glBegin(GL_LINES);
-		glColor3d(1, 0, 0);
-		glVertex3d(0, 0, 0);
-		glVertex3d(10000, 0, 0);
-		glColor3d(0, 1, 0);
-		glVertex3d(0, 0, 0);
-		glVertex3d(0, 10000, 0);
-		glColor3d(0, 0, 1);
-		glVertex3d(0, 0, 0);
-		glVertex3d(0, 0, 10000);
+			glColor3d(1, 0, 0);
+			glVertex3d(0, 0, 0);
+			glVertex3d(10000, 0, 0);
+			glColor3d(0, 1, 0);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 10000, 0);
+			glColor3d(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 0, 10000);
 		glEnd();
+	}
 
-		// Calcul des valeurs paramétriques pour le soleil
-		int64_t fullDayMillis = computeTimeMillis(24, 0, 0, 0);
-		int64_t sunRiseTime = computeTimeMillis(6, 0, 0, 0);
-		int64_t sunSetTime = computeTimeMillis(19, 0, 0, 0);
-		int64_t midnightTime = int64_t(sunSetTime + (fullDayMillis - (sunSetTime - sunRiseTime)) * 0.5f) % fullDayMillis;
-		SYSTEMTIME sysTime;
-		GetLocalTime(&sysTime);
-		int64_t realTimeMillis = computeTimeMillis(sysTime);
-		int64_t currentTimeMillis = realTimeMillis + timeOffset;
-		currentTimeMillis %= fullDayMillis;
-
-		float sunProgressT;
-		if (currentTimeMillis < sunRiseTime)
-		{
-			float referenceMidnightTime = (midnightTime > sunRiseTime) ? (midnightTime - fullDayMillis) : midnightTime;
-			sunProgressT = -0.5f + inverseLerp(referenceMidnightTime, sunRiseTime, currentTimeMillis) * 0.5f;
-		}
-		else if (currentTimeMillis > sunSetTime)
-		{
-			float referenceMidnightTime = (midnightTime < sunSetTime) ? (midnightTime + fullDayMillis) : midnightTime;
-			sunProgressT = inverseLerp(sunSetTime, referenceMidnightTime, currentTimeMillis) * 0.5f + 1.0;
-		}
-		else
-			sunProgressT = inverseLerp(sunRiseTime, sunSetTime, currentTimeMillis);
-
-		// std::cout << sunProgressT << endl;
-
-		float time = this->DeltaTimeCumul;
-		float scaledTime = time * 3.0f;
-		float sawTime = 1.0 - (scaledTime - int(scaledTime));
-		float sinTime = std::sin(sawTime * M_PI * 0.5);
-
-		// Calcul et mise à jour de la couleur du soleil, du ciel et d'ambiance
-		float distToZenith = std::abs(sunProgressT - 0.5);
-		float distToZenithTransitionColorRange = 0.05f;
-		float sunAppearanceColorT = saturate((0.5 - distToZenith) / distToZenithTransitionColorRange);
-
-		/*
-		std::cout << sunProgressT << " " << distToZenith << " "
-		<< sunRiseTime << " " << sunSetTime << " " << currentTimeMillis << " " 
-		<< sunAppearanceColorT << std::endl;
-		*/
-
-		YColor baseSunColor(1, 0.9f, 0.25f, 1);
-		YColor sunAppearanceColor(1, 0.1f, 0, 1);
-		YColor sunColor = sunAppearanceColor.interpolate(baseSunColor, sunAppearanceColorT);
-		YColor black = YColor(0, 0, 0, 1);
-		YColor white = YColor(1, 1, 1, 1);
-		// sunColor = sunColor.interpolate(black, 1 - sinTime);
-		
-		float sunAppearanceSkyColorT = (0.5 - distToZenith) / distToZenithTransitionColorRange;
-		// std::cout << sunProgressT << " " << distToZenith << " " << sunAppearanceSkyColorT << std::endl;
-
-		YColor brightSkyColor(0.4f, 0.85f, 1, 1);
-		YColor darkSkyColor(0.1f, 0.15f, 0.4f, 1);
-		YColor sunAppearanceSkyColor(0.8f, 0.5f, 0.3f, 1);
-
-		YColor skyColor;
-		if (sunAppearanceSkyColorT > 0)
-		{
-			skyColor = sunAppearanceSkyColor.interpolate(brightSkyColor, sunAppearanceSkyColorT);
-		}
-		else
-		{
-			skyColor = sunAppearanceSkyColor.interpolate(darkSkyColor, -sunAppearanceSkyColorT);
-		}
-		Renderer->setBackgroundColor(skyColor);
-
-		YColor brightAmbientColor(0.6f, 0.65f, 0.7f, 1);
-		YColor darkAmbientColor(0.15f, 0.15f, 0.3f, 1);
-		YColor sunAppearanceAmbientColor(0.4f, 0.5f, 0.3f, 1);
-		YColor ambientColor;
-		if (sunAppearanceSkyColorT > 0)
-		{
-			ambientColor = sunAppearanceAmbientColor.interpolate(brightAmbientColor, sunAppearanceSkyColorT);
-		}
-		else
-		{
-			ambientColor = sunAppearanceAmbientColor.interpolate(darkAmbientColor, -sunAppearanceSkyColorT);
-		}
-		
-		// Calcul et application de la transformation du soleil
-		float scale = 0.25f + 0.125 * sinTime;
-
-		float sunRiseAngle = 90.0f;
-		float sunSetAngle = -90.0f;
-		float sunAngle = lerp(sunRiseAngle, sunSetAngle, sunProgressT);
-
-		YVec3f sunDirection = YVec3f(0, 0, 1).rotate(YVec3f(-1, 0.5, 0).normalize(), sunAngle * M_PI / 180.0f);
-		YVec3f sunNormal = sunDirection.cross(YVec3f(1, 0, 0));
-		
-		glDisable(GL_DEPTH_TEST);
+	void renderAvatar()
+	{
 		glPushMatrix();
-			YVec3f camPos = Renderer->Camera->Position;
-			glTranslatef(camPos.X, camPos.Y, camPos.Z);
-			glRotatef(sunAngle, -1, 0.5, 0);
-			glTranslatef(0, 0, 20);
-			glScalef(scale, scale, scale);
-			glRotatef(-sunAngle, -1, 0.5, 0);
-
-			glRotatef(360 * time * 1.25, 1, 0, 0);
-			glRotatef(360 * time * 2, 0, 1, 0);
-			glRotatef(360 * time * 0.75, 0, 0, 1);
-
-			// Tracé du soleil
-			glUseProgram(ShaderSun); //Demande au GPU de charger ces shaders
-			GLuint shaderSun_sunColor = glGetUniformLocation(ShaderSun, "sun_color");
-			glUniform3f(shaderSun_sunColor, sunColor.R, sunColor.V, sunColor.B);
-			
+			glUseProgram(ShaderCube);
+			GLuint shaderCube_cubeColor = glGetUniformLocation(ShaderCube, "cube_color");
+			glUniform4f(shaderCube_cubeColor, 1.0f, 1.0f, 1.0f, 1.0f);
+			glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
+			glScalef(0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE);
+			glScalef(avatar->Width, avatar->Width, avatar->Height);
 			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
-			Renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
-			VboCube->render(); //Demande le rendu du VBO
-
-			YColor internalSunColor = sunColor.interpolate(white, 0.25f);
-			glUniform3f(shaderSun_sunColor, internalSunColor.R, internalSunColor.V, internalSunColor.B);
-			glScalef(0.8f, 0.8f, 0.8f);
-			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
-			Renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
+			Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
 			VboCube->render(); //Demande le rendu du VBO
 		glPopMatrix();
-		glEnable(GL_DEPTH_TEST);
+	}
 
+	void renderWorld()
+	{
 		glPushMatrix();
-		glUseProgram(ShaderCube);
-		GLuint shaderCube_cubeColor = glGetUniformLocation(ShaderCube, "cube_color");
-		glUniform4f(shaderCube_cubeColor, 1.0f, 1.0f, 1.0f, 1.0f);
-		glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
-		glScalef(0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE);
-		glScalef(avatar->Width, avatar->Width, avatar->Height);
-		Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
-		Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
-		VboCube->render(); //Demande le rendu du VBO
-		glPopMatrix();
-
-		glPushMatrix();
-			// Send "global" parameters to shader
 			glUseProgram(ShaderWorld);
 			GLuint shaderWorld_sunColor = glGetUniformLocation(ShaderWorld, "sun_color");
-			YColor lightingSunColor = sunColor.interpolate(white, 0.5f);
-			glUniform3f(shaderWorld_sunColor, lightingSunColor.R, lightingSunColor.V, lightingSunColor.B);
+			glUniform3f(shaderWorld_sunColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
 			GLuint shaderWorld_ambientColor = glGetUniformLocation(ShaderWorld, "ambient_color");
-			glUniform3f(shaderWorld_ambientColor, ambientColor.R, ambientColor.V, ambientColor.B);
+			glUniform3f(shaderWorld_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
 			GLuint shaderWorld_sunDirection = glGetUniformLocation(ShaderWorld, "sun_direction");
-			glUniform3f(shaderWorld_sunDirection, sunDirection.X, sunDirection.Y, sunDirection.Z);
+			glUniform3f(shaderWorld_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
 
 			YVec3f cameraPos = Renderer->Camera->Position;
 			GLuint shaderWorld_cameraPos = glGetUniformLocation(ShaderWorld, "camera_pos");
 			glUniform3f(shaderWorld_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
 
-			// Render world
+			// Opaque
 			World->render_world_vbo(false, false);
+			// Transparent
 			World->render_world_vbo(false, true);
 		glPopMatrix();
+	}
 
-		
-		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+	void drawIntersectedCubeSide()
+	{
 		if (intersectionCubeSide)
 		{
-			glUseProgram(0);
-			glDisable(GL_LIGHTING);
-			glDisable(GL_DEPTH_TEST);
-			glPushMatrix();
-			glScalef(MCube::CUBE_SIZE, MCube::CUBE_SIZE, MCube::CUBE_SIZE);
-			glTranslatef(intersectionCubeX, intersectionCubeY, intersectionCubeZ);
-
-			// Draw selected face
-
+			// Compute selected face
 			YVec3<int> corners[4];
 			switch (intersectionCubeSide)
 			{
-				case NEG_X:
-					corners[0] = YVec3<int>(0, 0, 0);
-					corners[1] = YVec3<int>(0, 1, 0);
-					corners[2] = YVec3<int>(0, 1, 1);
-					corners[3] = YVec3<int>(0, 0, 1);
-					break;
-				case POS_X:
-					corners[0] = YVec3<int>(1, 0, 0);
-					corners[1] = YVec3<int>(1, 1, 0);
-					corners[2] = YVec3<int>(1, 1, 1);
-					corners[3] = YVec3<int>(1, 0, 1);
-					break;
-				case NEG_Y:
-					corners[0] = YVec3<int>(0, 0, 0);
-					corners[1] = YVec3<int>(1, 0, 0);
-					corners[2] = YVec3<int>(1, 0, 1);
-					corners[3] = YVec3<int>(0, 0, 1);
-					break;
-				case POS_Y:
-					corners[0] = YVec3<int>(0, 1, 0);
-					corners[1] = YVec3<int>(1, 1, 0);
-					corners[2] = YVec3<int>(1, 1, 1);
-					corners[3] = YVec3<int>(0, 1, 1);
-					break;
-				case NEG_Z:
-					corners[0] = YVec3<int>(0, 0, 0);
-					corners[1] = YVec3<int>(1, 0, 0);
-					corners[2] = YVec3<int>(1, 1, 0);
-					corners[3] = YVec3<int>(0, 1, 0);
-					break;
-				case POS_Z:
-					corners[0] = YVec3<int>(0, 0, 1);
-					corners[1] = YVec3<int>(1, 0, 1);
-					corners[2] = YVec3<int>(1, 1, 1);
-					corners[3] = YVec3<int>(0, 1, 1);
-					break;
-					
+			case NEG_X:
+				corners[0] = YVec3<int>(0, 0, 0);
+				corners[1] = YVec3<int>(0, 1, 0);
+				corners[2] = YVec3<int>(0, 1, 1);
+				corners[3] = YVec3<int>(0, 0, 1);
+				break;
+			case POS_X:
+				corners[0] = YVec3<int>(1, 0, 0);
+				corners[1] = YVec3<int>(1, 1, 0);
+				corners[2] = YVec3<int>(1, 1, 1);
+				corners[3] = YVec3<int>(1, 0, 1);
+				break;
+			case NEG_Y:
+				corners[0] = YVec3<int>(0, 0, 0);
+				corners[1] = YVec3<int>(1, 0, 0);
+				corners[2] = YVec3<int>(1, 0, 1);
+				corners[3] = YVec3<int>(0, 0, 1);
+				break;
+			case POS_Y:
+				corners[0] = YVec3<int>(0, 1, 0);
+				corners[1] = YVec3<int>(1, 1, 0);
+				corners[2] = YVec3<int>(1, 1, 1);
+				corners[3] = YVec3<int>(0, 1, 1);
+				break;
+			case NEG_Z:
+				corners[0] = YVec3<int>(0, 0, 0);
+				corners[1] = YVec3<int>(1, 0, 0);
+				corners[2] = YVec3<int>(1, 1, 0);
+				corners[3] = YVec3<int>(0, 1, 0);
+				break;
+			case POS_Z:
+				corners[0] = YVec3<int>(0, 0, 1);
+				corners[1] = YVec3<int>(1, 0, 1);
+				corners[2] = YVec3<int>(1, 1, 1);
+				corners[3] = YVec3<int>(0, 1, 1);
+				break;
 			}
 
-			for (int i = 1; i >= 0; i--)
-			{
-				glLineWidth(3.0f * (i + 1));
-				glColor3f(i, i, i);
-				glBegin(GL_LINES);
+			// Draw selected face
+			glUseProgram(0);
+			glDisable(GL_LIGHTING);
+			glDisable(GL_DEPTH_TEST);
 
-				glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
-				glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
+			glPushMatrix();
+				glScalef(MCube::CUBE_SIZE, MCube::CUBE_SIZE, MCube::CUBE_SIZE);
+				glTranslatef(intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+				for (int i = 1; i >= 0; i--)
+				{
+					glLineWidth(3.0f * (i + 1));
+					glColor3f(i, i, i);
+					glBegin(GL_LINES);
 
-				glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
-				glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
+					glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
+					glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
 
-				glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
-				glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+					glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
+					glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
 
-				glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
-				glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
+					glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
+					glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
 
-				glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
-				glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
+					glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+					glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
 
-				glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
-				glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+					glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
+					glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
 
-				glEnd();
-			}
-			
-			glLineWidth(1.0f);
+					glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
+					glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+
+					glEnd();
+				}
+				glLineWidth(1.0f);
+			glPopMatrix();
 
 			glEnable(GL_DEPTH_TEST);
-			glPopMatrix();
 		}
-	}
-
-	int64_t computeTimeMillis(WORD hour, WORD minute, WORD second, WORD milliseconds)
-	{
-		return milliseconds + 1000LL * (second + 60LL * (minute + 60LL * hour));
-	}
-
-	int64_t computeTimeMillis(SYSTEMTIME &time)
-	{
-		return computeTimeMillis(time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
 	}
 
 	void resize(int width, int height) {
 
-	}
-
-	float lerp(float a, float b, float t)
-	{
-		return a * (1.0 - t) + (b * t);
-	}
-
-	float inverseLerp(float a, float b, float x)
-	{
-		return (x - a) / (b - a);
-	}
-
-	float saturate(float value)
-	{
-		return max(0.0, min(1.0, value));
 	}
 
 	void incrementTime()

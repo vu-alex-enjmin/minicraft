@@ -42,6 +42,9 @@
     <Filter Include="Fichiers d%27en-tête\engine\render">
       <UniqueIdentifier>{75d7c323-8b30-4ce8-97d7-f825373fcbfa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers sources\noise">
+      <UniqueIdentifier>{0f24b923-bef6-4832-99f5-c7e7fc71d33b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\engine_minicraft.h">
@@ -71,6 +74,15 @@
     <ClInclude Include="src\my_physics.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="src\sky_renderer.h">
+      <Filter>Fichiers d%27en-tête\engine\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\time_utils.h">
+      <Filter>Fichiers d%27en-tête\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\my_math.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -82,11 +94,20 @@
     <ClCompile Include="..\src\engine\render\vbo.cpp">
       <Filter>Fichiers sources\render</Filter>
     </ClCompile>
-    <ClCompile Include="src\customPerlin.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
     <ClCompile Include="src\my_physics.cpp">
       <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\customPerlin.cpp">
+      <Filter>Fichiers sources\noise</Filter>
+    </ClCompile>
+    <ClCompile Include="src\time_utils.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\my_math.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sky_renderer.cpp">
+      <Filter>Fichiers sources\render</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

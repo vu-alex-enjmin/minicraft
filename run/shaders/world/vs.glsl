@@ -22,6 +22,7 @@ out float type;
 #define CUBE_PIERRE 3.0
 #define CUBE_EAU 4.0
 #define CUBE_SABLE_01 17.0
+#define CUBE_LAINE_01 19.0
 
 void main()
 {
@@ -38,15 +39,17 @@ void main()
 
 	//Couleur fonction du type
 	if(vs_type_in == CUBE_HERBE)
-		color = vec4(0, 1, 0, 1);
+		color = vec4(0.2, 0.55, 0.2, 1);
 	if(vs_type_in == CUBE_TERRE)
-		color = vec4(0.3, 0.22, 0.11, 1);
+		color = vec4(0.4, 0.32, 0.21, 1);
 	if(vs_type_in == CUBE_PIERRE)
-		color = vec4(0.5, 0.5, 0.5, 1);
+		color = vec4(0.4, 0.4, 0.4, 1);
 	if(vs_type_in == CUBE_EAU)
-		color = vec4(0.0, 0.25, 1.0, 0.7);
+		color = vec4(0.0, 0.5, 1.0, 0.7);
 	if(vs_type_in == CUBE_SABLE_01)
-		color = vec4(1.0, 0.9, 0.5, 1.0);
+		color = vec4(0.75, 0.75, 0.65, 1.0);
+	if(vs_type_in == CUBE_LAINE_01)
+		color = vec4(1.0, 1.0, 1.0, 1.0);
 
 	type = vs_type_in;
 }

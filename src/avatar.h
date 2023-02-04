@@ -6,7 +6,7 @@
 #include "engine/utils/timer.h"
 #include "world.h"
 
-#define GRAVITY -9.80665
+#define GRAVITY (-9.80665f * 2)
 
 class MAvatar
 {
@@ -38,7 +38,7 @@ public:
 		Position = YVec3f((MWorld::MAT_SIZE_METERS) / 2, (MWorld::MAT_SIZE_METERS) / 2, (MWorld::MAT_HEIGHT_METERS));
 		Height = 1.8f;
 		CurrentHeight = Height;
-		Width = 0.6f;
+		Width = 0.8f;
 		Cam = cam;
 		avance = false;
 		recule = false;
@@ -72,7 +72,7 @@ public:
 		if (avance)
 			forward += 1.0f;
 
-		float speed = 500.0f;
+		float speed = Run? 800.0f : 500.0f;
 		YVec3f forwardVec = Cam->UpRef.cross(Cam->RightVec).normalize();
 		YVec3f movement = ((forwardVec * forward) + (Cam->RightVec * horizontal)) * elapsed * speed;
 

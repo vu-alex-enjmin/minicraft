@@ -68,6 +68,9 @@
     <ClInclude Include="src\customPerlin.h">
       <Filter>Fichiers d%27en-tête\engine\noise</Filter>
     </ClInclude>
+    <ClInclude Include="src\my_physics.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -80,7 +83,10 @@
       <Filter>Fichiers sources\render</Filter>
     </ClCompile>
     <ClCompile Include="src\customPerlin.cpp">
-      <Filter>Fichiers d%27en-tête\engine\noise</Filter>
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\my_physics.cpp">
+      <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -2,8 +2,10 @@
 #define __YOCTO__ENGINE_MINICRAFT__
 
 #include <cmath>
+#include <limits>
 
 #include "engine/engine.h"
+#include "my_physics.h"
 
 #include "avatar.h"
 #include "world.h"
@@ -20,7 +22,11 @@ public:
 	GLuint ShaderWorld;
 	int pointCount;
 	int64_t timeOffset = 0;
-	
+	float pickingRange = 3.5f;
+
+	YVec3f intersection;
+	int intersectionCubeX, intersectionCubeY, intersectionCubeZ;
+	cubeSide intersectionCubeSide;
 
 	//Gestion singleton
 	static YEngine* getInstance()
@@ -173,7 +179,8 @@ public:
 
 	void update(float elapsed)
 	{
-		float speed = 100.0f;
+		// Camera (non-first person)
+		float speed = ctrlDown ? 150.0f : 50.0f;
 
 		float horizontal = 0.0f;
 		if (qKeyDown)
@@ -187,27 +194,28 @@ public:
 		if (zKeyDown)
 			vertical += 1.0f;
 
-		/*
 		Renderer->Camera->move(
 			(Renderer->Camera->RightVec * horizontal +
 			Renderer->Camera->Direction * vertical) * speed * elapsed
 		);
-		*/
 
-		avatar->gauche = qKeyDown;
-		avatar->droite = dKeyDown;
-		avatar->recule = sKeyDown;
-		avatar->avance = zKeyDown;
+		// First person
 		if (firstPerson)
-			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, avatar->Height * 0.85 * 0.5 * MCube::CUBE_SIZE));
+		{
+			avatar->gauche = qKeyDown;
+			avatar->droite = dKeyDown;
+			avatar->recule = sKeyDown;
+			avatar->avance = zKeyDown;
+			avatar->Run = firstPerson && ctrlDown;
+		}
+
 		avatar->update(elapsed);
+		if (firstPerson)
+			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, avatar->Height * 0.925 * 0.5 * MCube::CUBE_SIZE));
 	}
 
 	void renderObjects()
 	{
-		if (firstPerson)
-			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, avatar->Height * 0.85 * 0.5 * MCube::CUBE_SIZE));
-
 		glUseProgram(0);
 
 		//Rendu des axes
@@ -267,8 +275,8 @@ public:
 		<< sunAppearanceColorT << std::endl;
 		*/
 
-		YColor baseSunColor(1, 0.9, 0.25, 1);
-		YColor sunAppearanceColor(1., 0.1, 0, 1);
+		YColor baseSunColor(1, 0.9f, 0.25f, 1);
+		YColor sunAppearanceColor(1, 0.1f, 0, 1);
 		YColor sunColor = sunAppearanceColor.interpolate(baseSunColor, sunAppearanceColorT);
 		YColor black = YColor(0, 0, 0, 1);
 		YColor white = YColor(1, 1, 1, 1);
@@ -277,9 +285,9 @@ public:
 		float sunAppearanceSkyColorT = (0.5 - distToZenith) / distToZenithTransitionColorRange;
 		// std::cout << sunProgressT << " " << distToZenith << " " << sunAppearanceSkyColorT << std::endl;
 
-		YColor brightSkyColor(0.4, 0.85, 1, 1);
-		YColor darkSkyColor(0.1, 0.15, 0.4, 1);
-		YColor sunAppearanceSkyColor(0.8, 0.5, 0.3, 1);
+		YColor brightSkyColor(0.4f, 0.85f, 1, 1);
+		YColor darkSkyColor(0.1f, 0.15f, 0.4f, 1);
+		YColor sunAppearanceSkyColor(0.8f, 0.5f, 0.3f, 1);
 
 		YColor skyColor;
 		if (sunAppearanceSkyColorT > 0)
@@ -292,9 +300,9 @@ public:
 		}
 		Renderer->setBackgroundColor(skyColor);
 
-		YColor brightAmbientColor(0.6, 0.6, 0.6, 1);
-		YColor darkAmbientColor(0.15, 0.15, 0.3, 1);
-		YColor sunAppearanceAmbientColor(0.4, 0.5, 0.3, 1);
+		YColor brightAmbientColor(0.6f, 0.65f, 0.7f, 1);
+		YColor darkAmbientColor(0.15f, 0.15f, 0.3f, 1);
+		YColor sunAppearanceAmbientColor(0.4f, 0.5f, 0.3f, 1);
 		YColor ambientColor;
 		if (sunAppearanceSkyColorT > 0)
 		{
@@ -337,9 +345,9 @@ public:
 			Renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
 			VboCube->render(); //Demande le rendu du VBO
 
-			YColor internalSunColor = sunColor.interpolate(white, 0.25);
+			YColor internalSunColor = sunColor.interpolate(white, 0.25f);
 			glUniform3f(shaderSun_sunColor, internalSunColor.R, internalSunColor.V, internalSunColor.B);
-			glScalef(0.8, 0.8, 0.8);
+			glScalef(0.8f, 0.8f, 0.8f);
 			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
 			Renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
 			VboCube->render(); //Demande le rendu du VBO
@@ -347,10 +355,23 @@ public:
 		glEnable(GL_DEPTH_TEST);
 
 		glPushMatrix();
+		glUseProgram(ShaderCube);
+		GLuint shaderCube_cubeColor = glGetUniformLocation(ShaderCube, "cube_color");
+		glUniform4f(shaderCube_cubeColor, 1.0f, 1.0f, 1.0f, 1.0f);
+		glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
+		glScalef(0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE);
+		glScalef(avatar->Width, avatar->Width, avatar->Height);
+		Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
+		Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
+		VboCube->render(); //Demande le rendu du VBO
+		glPopMatrix();
+
+		glPushMatrix();
 			// Send "global" parameters to shader
 			glUseProgram(ShaderWorld);
 			GLuint shaderWorld_sunColor = glGetUniformLocation(ShaderWorld, "sun_color");
-			glUniform3f(shaderWorld_sunColor, sunColor.R, sunColor.V, sunColor.B);
+			YColor lightingSunColor = sunColor.interpolate(white, 0.5f);
+			glUniform3f(shaderWorld_sunColor, lightingSunColor.R, lightingSunColor.V, lightingSunColor.B);
 			GLuint shaderWorld_ambientColor = glGetUniformLocation(ShaderWorld, "ambient_color");
 			glUniform3f(shaderWorld_ambientColor, ambientColor.R, ambientColor.V, ambientColor.B);
 			GLuint shaderWorld_sunDirection = glGetUniformLocation(ShaderWorld, "sun_direction");
@@ -362,19 +383,96 @@ public:
 
 			// Render world
 			World->render_world_vbo(false, false);
+			World->render_world_vbo(false, true);
 		glPopMatrix();
 
-		glPushMatrix();
-			glUseProgram(ShaderCube);
-			GLuint shaderCube_cubeColor = glGetUniformLocation(ShaderCube, "cube_color");
-			glUniform4f(shaderCube_cubeColor, 1.0f, 1.0f, 1.0f, 1.0f);
-			glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
-			glScalef(0.5, 0.5, 0.5);
-			glScalef(avatar->Width, avatar->Width, avatar->Height);
-			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
-			Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
-			VboCube->render(); //Demande le rendu du VBO
-		glPopMatrix();
+		
+		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+		if (intersectionCubeSide)
+		{
+			glUseProgram(0);
+			glDisable(GL_LIGHTING);
+			glDisable(GL_DEPTH_TEST);
+			glPushMatrix();
+			glScalef(MCube::CUBE_SIZE, MCube::CUBE_SIZE, MCube::CUBE_SIZE);
+			glTranslatef(intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+
+			// Draw selected face
+
+			YVec3<int> corners[4];
+			switch (intersectionCubeSide)
+			{
+				case NEG_X:
+					corners[0] = YVec3<int>(0, 0, 0);
+					corners[1] = YVec3<int>(0, 1, 0);
+					corners[2] = YVec3<int>(0, 1, 1);
+					corners[3] = YVec3<int>(0, 0, 1);
+					break;
+				case POS_X:
+					corners[0] = YVec3<int>(1, 0, 0);
+					corners[1] = YVec3<int>(1, 1, 0);
+					corners[2] = YVec3<int>(1, 1, 1);
+					corners[3] = YVec3<int>(1, 0, 1);
+					break;
+				case NEG_Y:
+					corners[0] = YVec3<int>(0, 0, 0);
+					corners[1] = YVec3<int>(1, 0, 0);
+					corners[2] = YVec3<int>(1, 0, 1);
+					corners[3] = YVec3<int>(0, 0, 1);
+					break;
+				case POS_Y:
+					corners[0] = YVec3<int>(0, 1, 0);
+					corners[1] = YVec3<int>(1, 1, 0);
+					corners[2] = YVec3<int>(1, 1, 1);
+					corners[3] = YVec3<int>(0, 1, 1);
+					break;
+				case NEG_Z:
+					corners[0] = YVec3<int>(0, 0, 0);
+					corners[1] = YVec3<int>(1, 0, 0);
+					corners[2] = YVec3<int>(1, 1, 0);
+					corners[3] = YVec3<int>(0, 1, 0);
+					break;
+				case POS_Z:
+					corners[0] = YVec3<int>(0, 0, 1);
+					corners[1] = YVec3<int>(1, 0, 1);
+					corners[2] = YVec3<int>(1, 1, 1);
+					corners[3] = YVec3<int>(0, 1, 1);
+					break;
+					
+			}
+
+			for (int i = 1; i >= 0; i--)
+			{
+				glLineWidth(3.0f * (i + 1));
+				glColor3f(i, i, i);
+				glBegin(GL_LINES);
+
+				glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
+				glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
+
+				glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
+				glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
+
+				glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
+				glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+
+				glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+				glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
+
+				glVertex3f(corners[0].X, corners[0].Y, corners[0].Z);
+				glVertex3f(corners[2].X, corners[2].Y, corners[2].Z);
+
+				glVertex3f(corners[1].X, corners[1].Y, corners[1].Z);
+				glVertex3f(corners[3].X, corners[3].Y, corners[3].Z);
+
+				glEnd();
+			}
+			
+			glLineWidth(1.0f);
+
+			glEnable(GL_DEPTH_TEST);
+			glPopMatrix();
+		}
 	}
 
 	int64_t computeTimeMillis(WORD hour, WORD minute, WORD second, WORD milliseconds)
@@ -419,25 +517,41 @@ public:
 	bool dKeyDown;
 	
 	bool firstPerson;
+	bool ctrlDown;
 
 	void keyPressed(int key, bool special, bool down, int p1, int p2)
 	{
-		if ((key == 'g' || key == 'G') && down)
-			incrementTime();
-		else if (key == 'z' || key == 'Z')
-			zKeyDown = down;
-		else if (key == 'q' || key == 'Q')
-			qKeyDown = down;
-		else if (key == 's' || key == 'S')
-			sKeyDown = down;
-		else if (key == 'd' || key == 'D')
-			dKeyDown = down;
-		else if ((key == 't' || key == 'T') && down)
-			Renderer->Camera->moveTo(avatar->Position + YVec3f(0, 0, 4));
-		else if (key == ' ' && down)
-			avatar->Jump = true;
-		else if ((key == 'c' || key == 'C') && down)
-			firstPerson = !firstPerson;
+		// std::cout << "KEY PRESS " << key << " "  << special << " " << p1 << std::endl;
+
+		if (!special)
+		{
+			// OTHER KEYS
+			if (key == ' ' && down)
+				avatar->Jump = true;
+
+			// LETTER KEYS
+			if (ctrlDown) // for some reason, when ctrl is held down, "key"'s value is shifted by 64 for letters
+				key += 64;
+
+			if ((key == 'g' || key == 'G') && down)
+				incrementTime();
+			else if (key == 'z' || key == 'Z')
+				zKeyDown = down;
+			else if (key == 'q' || key == 'Q')
+				qKeyDown = down;
+			else if (key == 's' || key == 'S')
+				sKeyDown = down;
+			else if (key == 'd' || key == 'D')
+				dKeyDown = down;
+			else if ((key == 'c' || key == 'C') && down)
+				firstPerson = !firstPerson;
+		}
+		else
+		{
+			// SPECIAL KEYS
+			if (key == 114) // CTRL
+				ctrlDown = down;
+		}
 	}
 
 	void mouseWheel(int wheel, int dir, int x, int y, bool inUi)
@@ -474,9 +588,24 @@ public:
 			rightButtonDown = (state == GLUT_DOWN);
 
 
-		if (state == GLUT_DOWN && (button == GLUT_RIGHT_BUTTON || button == GLUT_MIDDLE_BUTTON))
+		if (state == GLUT_DOWN)
 		{
-			glutWarpPointer(Renderer->ScreenWidth / 2, Renderer->ScreenHeight / 2);
+			if (button == GLUT_RIGHT_BUTTON || button == GLUT_MIDDLE_BUTTON)
+			{
+				glutWarpPointer(Renderer->ScreenWidth / 2, Renderer->ScreenHeight / 2);
+			}
+			
+			if (intersectionCubeSide)
+			{
+				if (button == GLUT_LEFT_BUTTON)
+				{
+					World->deleteCube(intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+				}
+				else if (button == GLUT_RIGHT_BUTTON)
+				{
+					World->placeCubeOnCubeSide(intersectionCubeX, intersectionCubeY, intersectionCubeZ, intersectionCubeSide, MCube::CUBE_LAINE_01);
+				}
+			}
 		}
 	}
 
@@ -491,10 +620,10 @@ public:
 		int xDelta = Renderer->ScreenWidth / 2 - x;
 		int yDelta = Renderer->ScreenHeight / 2 - y;
 
-		if (rightButtonDown)
+		if (rightButtonDown || firstPerson)
 		{
-			float rotationMultiplier = 2 * M_PI * 0.001;
-			if (glutGetModifiers() & GLUT_ACTIVE_CTRL)
+			float rotationMultiplier = float(2 * M_PI * 0.001);
+			if (ctrlDown && !firstPerson)
 			{
 				Renderer->Camera->rotateAround(xDelta * rotationMultiplier);
 				Renderer->Camera->rotateUpAround(yDelta * rotationMultiplier);
@@ -506,10 +635,10 @@ public:
 			}
 		}
 
-		if (middleButtonDown)
+		if (middleButtonDown && !firstPerson)
 		{
 			float translationMultiplier = 0.0025f;
-			if (glutGetModifiers() & GLUT_ACTIVE_CTRL)
+			if (ctrlDown)
 			{
 				YVec3<float> projectedForward = Renderer->Camera->RightVec.cross(Renderer->Camera->UpRef).normalize();
 
@@ -527,7 +656,7 @@ public:
 			}
 		}
 
-		if (rightButtonDown || middleButtonDown)
+		if (rightButtonDown || firstPerson || middleButtonDown)
 		{
 			glutWarpPointer(Renderer->ScreenWidth / 2, Renderer->ScreenHeight / 2);
 		}

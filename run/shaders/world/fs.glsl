@@ -38,11 +38,9 @@ void main()
 	if (type == CUBE_EAU)
 		sunLightSpecular = pow(sunLightSpecular, 1000);
 	else
-		sunLightSpecular = pow(sunLightSpecular, 3) * 0.625;
+		sunLightSpecular = pow(sunLightSpecular, 3) * 0.4;
 
-	
-	// sunLightAmount = 0;
-	float ambientAmount = max(0.3, dot(normalize(vec3(-0.25, -0.5, 1.0)), normal));
+	float ambientAmount = max(0.8, dot(normalize(vec3(-0.25, -0.5, 1.0)), normal)) * 0.5;
 
 	vec3 baseColor = color.xyz;
 	vec3 diffuseColor = baseColor * ((sunLightDiffuse * sun_color) + (ambient_color * ambientAmount));

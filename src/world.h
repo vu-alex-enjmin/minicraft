@@ -20,7 +20,7 @@ public :
 	#ifdef _DEBUG
 	static const int MAT_SIZE = 1; //en nombre de chunks
 	#else
-	static const int MAT_SIZE = 6; //en nombre de chunks
+	static const int MAT_SIZE = 4; //en nombre de chunks
 	#endif // DEBUG
 
 	static const int MAT_HEIGHT = 3; //en nombre de chunks
@@ -131,7 +131,6 @@ public :
 		MCube * cube = getCube(x,y,z);
 		cube->setType(MCube::CUBE_AIR);
 		cube->setDraw(false);
-		cube = getCube(x-1,y,z);
 		updateCube(x,y,z);	
 	}
 			
@@ -151,9 +150,9 @@ public :
 
 		//Générer ici le monde en modifiant les cubes
 		//Utiliser getCubes()
-		int minSurfaceHeight = MAT_HEIGHT_CUBES * 0.5;
+		int minSurfaceHeight = MAT_HEIGHT_CUBES * 0.5f;
 		int maxSurfaceHeight = MAT_HEIGHT_CUBES;
-		float waterHeightF = MAT_HEIGHT_CUBES * 0.53;
+		float waterHeightF = MAT_HEIGHT_CUBES * 0.53f;
 		int waterHeight = waterHeightF;
 
 		int minStoneHeight = 3;
@@ -164,7 +163,7 @@ public :
 		{
 			for (int y = 0; y < MAT_SIZE_CUBES; y++)
 			{
-				float heightNoiseValue = noise.sample((x + 177448), (y - 483542));
+				float heightNoiseValue = noise.sample((x + 177448), (y - 483302));
 				heightNoiseValue = heightNoiseValue * heightNoiseValue;
 				float stoneNoiseValue = noise.sampleSimple((x - 1245253) * 57.1433545, (y + 12347) * 72.1585211);
 
@@ -202,7 +201,6 @@ public :
 				}
 			}
 		}
-
 
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
@@ -457,43 +455,48 @@ public :
 
 	void render_world_vbo(bool debug, bool doTransparent)
 	{
-		glDisable(GL_BLEND);
-		//Dessiner les chunks opaques
-		for (int x = 0; x < MAT_SIZE; x++)
-			for (int y = 0; y < MAT_SIZE; y++)
-				for (int z = 0; z < MAT_HEIGHT; z++)
-				{
-					glPushMatrix();
-					glTranslatef(
-						x * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE, 
-						y * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE, 
-						z * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE
-					);
-					YRenderer::getInstance()->updateMatricesFromOgl();
-					YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
-					Chunks[x][y][z]->render(false);
-					glPopMatrix();
-				}
-				
-		glEnable(GL_BLEND);
-		//Dessiner les chunks transparents
-		for (int x = 0; x < MAT_SIZE; x++)
-			for (int y = 0; y < MAT_SIZE; y++)
-				for (int z = 0; z < MAT_HEIGHT; z++)
-				{
-					glPushMatrix();
-					glTranslatef(
-						x * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
-						y * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
-						z * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE
-					);
-					YRenderer::getInstance()->updateMatricesFromOgl();
-					YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
-					Chunks[x][y][z]->render(true);
-					glPopMatrix();
-				}
-
-		glDisable(GL_BLEND);
+		if (!doTransparent)
+		{
+			glDisable(GL_BLEND);
+			//Dessiner les chunks opaques
+			for (int x = 0; x < MAT_SIZE; x++)
+				for (int y = 0; y < MAT_SIZE; y++)
+					for (int z = 0; z < MAT_HEIGHT; z++)
+					{
+						glPushMatrix();
+						glTranslatef(
+							x * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
+							y * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
+							z * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE
+						);
+						YRenderer::getInstance()->updateMatricesFromOgl();
+						YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
+						Chunks[x][y][z]->render(false);
+						glPopMatrix();
+					}
+		}
+		else
+		{
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			//Dessiner les chunks transparents
+			for (int x = 0; x < MAT_SIZE; x++)
+				for (int y = 0; y < MAT_SIZE; y++)
+					for (int z = 0; z < MAT_HEIGHT; z++)
+					{
+						glPushMatrix();
+						glTranslatef(
+							x * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
+							y * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE,
+							z * MChunk::CHUNK_SIZE * MCube::CUBE_SIZE
+						);
+						YRenderer::getInstance()->updateMatricesFromOgl();
+						YRenderer::getInstance()->sendMatricesToShader(YRenderer::CURRENT_SHADER);
+						Chunks[x][y][z]->render(true);
+						glPopMatrix();
+					}
+			glDisable(GL_BLEND);
+		}
 	}
 
 	/**
@@ -520,12 +523,117 @@ public :
 		return false;
 	}
 
-	bool getRayCollision(const YVec3f & debSegment, const YVec3f & finSegment,
-		YVec3f & inter,
-		int &xCube, int&yCube, int&zCube)
+	cubeSide getRayCollision(
+		const YVec3f & debSegment, const YVec3f & direction, YVec3f & inter, const float maxDist,
+		int &xCube, int &yCube, int &zCube)
 	{
+		YVec3f adjustedOrigin = debSegment / MCube::CUBE_SIZE;
+
+		int minX = max(0, std::floorl(adjustedOrigin.X - maxDist));
+		int minY = max(0, std::floorl(adjustedOrigin.Y - maxDist));
+		int minZ = max(0, std::floorl(adjustedOrigin.Z - maxDist));
+
+		int maxX = min(MAT_SIZE_CUBES - 1, std::ceill(adjustedOrigin.X + maxDist));
+		int maxY = min(MAT_SIZE_CUBES - 1, std::ceill(adjustedOrigin.Y + maxDist));
+		int maxZ = min(MAT_HEIGHT_CUBES - 1, std::ceill(adjustedOrigin.Z + maxDist));
 		
-		return false;
+		float bestIntersectionT = std::numeric_limits<float>::infinity();
+		cubeSide bestIntersectionSide = cubeSide::NONE;
+
+		YVec3f currentIntersection;
+		float currentIntersectionT;
+		cubeSide currentTntersectionSide;
+		
+		for (int x = minX; x <= maxX; x++)
+		{
+			for (int y = minY; y <= maxY; y++)
+			{
+				for (int z = minZ; z <= maxZ; z++)
+				{
+					if (getCube(x, y, z)->isSolid())
+					{
+						YVec3f toCube = YVec3f(x + 0.5, y + 0.5, z + 0.5) - adjustedOrigin;
+						if (toCube.dot(direction) >= 0.0f) // Ignore les cubes derrière le joueur
+						{
+							currentTntersectionSide = lineUnitCubeIntersection(adjustedOrigin, direction, x, y, z, currentIntersection, currentIntersectionT, maxDist);
+							if (currentTntersectionSide)
+							{
+								if (currentIntersectionT < bestIntersectionT)
+								{
+									bestIntersectionT = currentIntersectionT;
+									bestIntersectionSide = currentTntersectionSide;
+									inter = currentIntersection;
+									xCube = x;
+									yCube = y;
+									zCube = z;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (bestIntersectionSide)
+		{
+			// std::cout << maxDist << " " << bestIntersectionT << ";" << (adjustedOrigin - inter).getSize() << std::endl;
+			inter *= MCube::CUBE_SIZE;
+		}
+
+		return bestIntersectionSide;
+	}
+
+	bool placeCubeOnCubeSide(const int cubeX, const int cubeY, const int cubeZ, const cubeSide side, const MCube::MCubeType type)
+	{
+		if (side == NONE || type == MCube::CUBE_AIR)
+			return false;
+
+		int targetX, targetY, targetZ;
+		if (!getCubePositionOnCubeSide(cubeX, cubeY, cubeZ, side, targetX, targetY, targetZ))
+			return false;
+
+		MCube *cube = getCube(targetX, targetY, targetZ);
+		if (cube->getType() != MCube::CUBE_AIR)
+			return false;
+
+		cube->setType(type);
+		cube->setDraw(true);
+		updateCube(targetX, targetY, targetZ);
+
+		return true;
+	}
+
+	bool getCubePositionOnCubeSide(
+		const int cubeX, const int cubeY, const int cubeZ, const cubeSide side,
+		int &outCubeX, int &outCubeY, int &outCubeZ)
+	{
+		outCubeX = cubeX;
+		outCubeY = cubeY;
+		outCubeZ = cubeZ;
+		switch (side)
+		{
+			case NEG_X:
+				outCubeX--;
+				break;
+			case POS_X:
+				outCubeX++;
+				break;
+			case NEG_Y:
+				outCubeY--;
+				break;
+			case POS_Y:
+				outCubeY++;
+				break;
+			case NEG_Z:
+				outCubeZ--;
+				break;
+			case POS_Z:
+				outCubeZ++;
+				break;
+		}
+
+		return !((outCubeX < 0) || (outCubeY < 0) || (outCubeZ < 0) ||
+			(outCubeX >= MAT_SIZE_CUBES) || (outCubeY >= MAT_SIZE_CUBES) || (outCubeZ >= MAT_HEIGHT_CUBES));
 	}
 
 	/**

@@ -288,6 +288,7 @@ public:
 			// Opaque
 			World->render_world_vbo(false, false);
 			// Transparent
+			Renderer->sendTimeToShader(DeltaTimeCumul, ShaderWorld);
 			World->render_world_vbo(false, true);
 		glPopMatrix();
 	}

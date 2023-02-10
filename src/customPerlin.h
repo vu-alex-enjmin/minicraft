@@ -1,5 +1,5 @@
-#ifndef __CUSTOM_PERLIN_INCLUDED__
-#define __CUSTOM_PERLIN_INCLUDED__
+#ifndef __CUSTOM_PERLIN__
+#define __CUSTOM_PERLIN__
 
 #include "engine/noise/perlin.h"
 
@@ -10,8 +10,8 @@ class CustomPerlin
 	public :
 		CustomPerlin();
 
+		float sample(float, float, float, float);
 		float sample(float, float, float);
-		float sample(float, float);
 
 		float sampleSimple(float, float, float);
 		float sampleSimple(float, float);

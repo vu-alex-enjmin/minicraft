@@ -12,7 +12,7 @@ CustomPerlin::CustomPerlin()
 	basePerlin.Freq = 0.0047438451471;
 }
 
-float CustomPerlin::sample(float x, float y, float z)
+float CustomPerlin::sample(float x, float y, float z, float valueCapMultiplier)
 {
 	float maxValue = 0.0f;
 	float value = 0.0f;
@@ -31,7 +31,7 @@ float CustomPerlin::sample(float x, float y, float z)
 			(y + offset.Y) * currentLoopFrequency,
 			(z + offset.Z) * currentLoopFrequency);
 
-		maxValue += currentLoopMaxValue;
+		maxValue += currentLoopMaxValue * valueCapMultiplier;
 		currentLoopMaxValue *= PERSISTENCE;
 		currentLoopFrequency *= LACUNARITY;
 	}
@@ -39,9 +39,9 @@ float CustomPerlin::sample(float x, float y, float z)
 	return clamp01(value / maxValue);
 }
 
-float CustomPerlin::sample(float x, float y)
+float CustomPerlin::sample(float x, float y, float valueCapMultiplier)
 {
-	return sample(x, y, 0);
+	return sample(x, y, 0, valueCapMultiplier);
 }
 
 float CustomPerlin::sampleSimple(float x, float y, float z)

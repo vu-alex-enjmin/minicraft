@@ -8,6 +8,8 @@
 #include "chunk.h"
 #include "engine/noise/perlin.h"
 #include "customPerlin.h"
+#include "random_utils.h"
+#include "my_math.h"
 
 class MWorld
 {
@@ -138,10 +140,6 @@ public :
 	{
 		YLog::log(YLog::USER_INFO,(toString("Creation du monde seed ")+toString(seed)).c_str());
 
-		srand(seed);
-
-		CustomPerlin noise;
-		
 		//Reset du monde
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
@@ -150,6 +148,21 @@ public :
 
 		//Générer ici le monde en modifiant les cubes
 		//Utiliser getCubes()
+		srand(seed);
+		CustomPerlin noise;
+		generate_base_terrain(noise, YVec3f(), seed);
+		carve_caves(noise, YVec3f(), seed + 2);
+
+		for(int x=0;x<MAT_SIZE;x++)
+			for(int y=0;y<MAT_SIZE;y++)
+				for(int z=0;z<MAT_HEIGHT;z++)
+					Chunks[x][y][z]->disableHiddenCubes();
+
+		add_world_to_vbo();
+	}
+
+	void generate_base_terrain(CustomPerlin &noise, const YVec3f &offset, int seed)
+	{
 		int minSurfaceHeight = MAT_HEIGHT_CUBES * 0.5f;
 		int maxSurfaceHeight = MAT_HEIGHT_CUBES;
 		float waterHeightF = MAT_HEIGHT_CUBES * 0.53f;
@@ -159,22 +172,21 @@ public :
 
 		int minStoneHeight = 3;
 		int maxStoneHeight = 7;
-		
+
 		int z;
 		for (int x = 0; x < MAT_SIZE_CUBES; x++)
 		{
 			for (int y = 0; y < MAT_SIZE_CUBES; y++)
 			{
-				float heightNoiseValue = noise.sample((x + 177448), (y - 483302));
+				float heightNoiseValue = noise.sample((x + 177448), (y - 483302), 1.0f);
 				heightNoiseValue = heightNoiseValue * heightNoiseValue;
 				float stoneNoiseValue = noise.sampleSimple((x - 1245253) * 57.1433545, (y + 12347) * 72.1585211);
 
 				float endHeightF = heightNoiseValue * maxSurfaceHeight + (1 - heightNoiseValue) * minSurfaceHeight;
 				int endHeight = endHeightF;
-				// int sandHeight = waterHeight + 1 + (((endHeightF - endHeight) < 0.5) ? 2 : 1);
 				int sandHeight = maxSandHeight - ((endHeightF - endHeight) >= 0.75);
 				int stoneHeight = endHeight - (stoneNoiseValue * maxStoneHeight + (1 - stoneNoiseValue) * minStoneHeight);
-				
+
 				for (z = endHeight - 1; z >= 0; z--)
 				{
 					MCube* cube = getCube(x, y, z);
@@ -203,13 +215,199 @@ public :
 				}
 			}
 		}
+	}
 
-		for(int x=0;x<MAT_SIZE;x++)
-			for(int y=0;y<MAT_SIZE;y++)
-				for(int z=0;z<MAT_HEIGHT;z++)
-					Chunks[x][y][z]->disableHiddenCubes();
+	void carve_caves(CustomPerlin &noise, const YVec3f &offset, const int seed)
+	{
+		float noiseValueGrid[MAT_SIZE_CUBES][MAT_SIZE_CUBES];
 
-		add_world_to_vbo();
+		float baseWormNoiseScale = 2.172339f;;
+		for (int x = 0; x < MAT_SIZE_CUBES; x++)
+		{
+			for (int y = 0; y < MAT_SIZE_CUBES; y++)
+			{
+				noiseValueGrid[x][y] = noise.sample((x - 327448) * baseWormNoiseScale, (y + 13302) * baseWormNoiseScale, 1.0f);
+			}
+		}
+
+		std::vector<YVec3f> wormTrajectory;
+
+		for (int x = 1; x < MAT_SIZE_CUBES - 1; x++)
+		{
+			for (int y = 1; y < MAT_SIZE_CUBES - 1; y++)
+			{
+				// Only create worms at noise local maximas
+				if (noiseValueGrid[x][y] <= noiseValueGrid[x - 1][y])
+					continue;
+				if (noiseValueGrid[x][y] <= noiseValueGrid[x + 1][y])
+					continue;
+				if (noiseValueGrid[x][y] <= noiseValueGrid[x][y - 1])
+					continue;
+				if (noiseValueGrid[x][y] <= noiseValueGrid[x][y + 1])
+					continue;
+
+				// Compute worm trajectory
+				wormTrajectory.clear();
+				fillWithPerlinWormTrajectory(x, y, offset.X, offset.Y, seed, noise, wormTrajectory);
+
+				// Check that trajectory does not hit water
+				bool wormTrajectoryIsValid = true;
+				for (int i = 0; i < wormTrajectory.size(); i++)
+				{
+					YVec3f& point = wormTrajectory[i];
+					int pX = std::lroundf(point.X);
+					int pY = std::lroundf(point.Y);
+					int pZ = std::lroundf(point.Z);
+
+					if (pX < 0 || pX >= MAT_SIZE_CUBES || pY < 0 || pY >= MAT_SIZE_CUBES)
+						continue;
+
+					MCube* cube = getCube(pX, pY, pZ);
+					if (cube->getType() == MCube::CUBE_EAU) 
+					{
+						wormTrajectoryIsValid = false;
+						break;
+					}
+				}
+				if (!wormTrajectoryIsValid)
+					continue;
+
+				// Carve using the worm's trajectory
+				carveWithWormTrajectory(wormTrajectory, noise);
+			}
+		}
+	}
+
+	void fillWithPerlinWormTrajectory(const int x, const int y, const int offsetX, const int offsetY, const int seed, CustomPerlin &noise, std::vector<YVec3f> &outTrajectory)
+	{
+		// Parameters
+		static const float minXAngle = degToRad(-70.0f);
+		static const float maxXAngle = degToRad(-10.0f);
+
+		static const float maxXAngleChange = degToRad(15.0f);
+		static const float maxZAngleChange = degToRad(36.0f);
+
+		static const float stepLength = 1.375f;
+
+		// Initialize worm
+		// > Generate unique seed for worm's RNG
+		int wormSeed = (x + offsetX) * 148867;
+		wormSeed ^= (wormSeed >> 8);
+		wormSeed *= 4895351;
+		wormSeed += seed;
+		wormSeed ^= (wormSeed << 8);
+		wormSeed *= 878023;
+		wormSeed += y + offsetY;
+		wormSeed ^= (wormSeed >> 8);
+		srand(wormSeed);
+
+		// > Compute worm start point
+		float startZNormalized = randomFloat(0.25, 0.95);
+		startZNormalized *= startZNormalized;
+		int startZ = (int)(startZNormalized * (MAT_HEIGHT_CUBES + 1));
+		YVec3f startPoint(x, y, startZ);
+		outTrajectory.push_back(startPoint);
+
+		// > Compute worm angle and offset for angle noise
+		float xNoiseOffset1 = randomFloat(-100000, 100000);
+		float xNoiseOffset2 = randomFloat(-100000, 100000);
+		float zNoiseOffset1 = randomFloat(-100000, 100000);
+		float zNoiseOffset2 = randomFloat(-100000, 100000);
+
+		float xAngle = lerp(minXAngle, maxXAngle, 0.5);
+		float zAngle = lerp(-M_PI, M_PI, noise.sample(zNoiseOffset1, zNoiseOffset2, 1.0));
+
+		// Move the worm until it dies
+		YVec3f xAxis = YVec3f(1, 0, 0);
+		YVec3f zAxis = YVec3f(0, 0, 1);
+
+		YVec3f currentPoint = startPoint;
+		float survivalChance = 1.0f;
+		while ((currentPoint.Z > 0) && (survivalChance >= randomFloat01()))
+		{
+			// Add new step to worm trajectory
+			YVec3f step = YVec3f(0, 1, 0).rotate(xAxis, xAngle).rotate(zAxis, zAngle) * stepLength;
+			currentPoint += step;
+			outTrajectory.push_back(currentPoint);
+
+			// Add offset to angle noise (arbitrary)
+			xNoiseOffset1 += 1.219f;
+			xNoiseOffset2 += 0.737f;
+			zNoiseOffset1 += 0.6723f;
+			zNoiseOffset2 += 0.93541f;
+
+			// Compute new angle
+			float xNoiseValue = noise.sample(xNoiseOffset1 * 23.137589, xNoiseOffset2 * 37.124755, 0.65f);
+			float zNoiseValue = noise.sample(zNoiseOffset1 * 29.332471, zNoiseOffset2 * 19.175897, 0.65f);
+
+			float xAngleChange = lerp(-maxXAngleChange, maxXAngleChange, xNoiseValue);
+			float zAngleChange = lerp(-maxZAngleChange, maxZAngleChange, zNoiseValue);
+
+			xAngle = clamp(xAngle + xAngleChange, minXAngle, maxXAngle);
+			zAngle += zAngleChange;
+
+			survivalChance *= 0.99925f + 0.00075f * currentPoint.Z / MAT_HEIGHT_CUBES;
+		}
+	}
+
+	void carveWithWormTrajectory(std::vector<YVec3f> &wormTrajectory, CustomPerlin &noise)
+	{
+		// > Compute carving parameters
+		static const float wormMaxRadius = 4.5f;
+		static const float wormMinRadius = 1.0f;
+		static const float wormMiddleRadius = lerp(wormMinRadius, wormMaxRadius, 0.5);
+		static const float radiusNoiseInfluence = 0.75f;
+
+		float currentWormMinRadius = lerp(wormMinRadius, wormMiddleRadius, randomFloat(0.0f, 0.5f));
+		float currentWormMaxRadius = lerp(wormMiddleRadius, wormMaxRadius, randomFloat(0.5f, 1.0f));
+
+		int trajectoryLength = wormTrajectory.size();
+		for (int i = 0; i < trajectoryLength; i++)
+		{
+			YVec3f &point = wormTrajectory[i];
+
+			// Compute a base [0-1] value that is thinner on the two ends of the trajectory
+			float radiusT = -4 * (float(i) / trajectoryLength - 0.5f) * (float(i) / trajectoryLength - 0.5f) + 1;
+			// Add noise to the value
+			float noiseValue = noise.sample(
+				point.X * 37.2237143,
+				point.Y * 21.7521991,
+				point.Z * 53.124717,
+				0.65f
+			);
+			float noisyRadiusT = lerp(radiusT, noiseValue, radiusNoiseInfluence);
+			float noisyRadius = lerp(currentWormMinRadius, currentWormMaxRadius, noisyRadiusT);
+			float sqrNoisyRadius = noisyRadius * noisyRadius;
+
+			int minX = max(0, std::floorl(point.X - noisyRadius));
+			int minY = max(0, std::floorl(point.Y - noisyRadius));
+			int minZ = max(0, std::floorl(point.Z - noisyRadius));
+
+			int maxX = min(MAT_SIZE_CUBES - 1, std::ceill(point.X + noisyRadius));
+			int maxY = min(MAT_SIZE_CUBES - 1, std::ceill(point.Y + noisyRadius));
+			int maxZ = min(MAT_HEIGHT_CUBES - 1, std::ceill(point.Z + noisyRadius));
+
+			float diffX, diffY, diffZ;
+			for (int x = minX; x <= maxX; x++)
+			{
+				for (int y = minY; y <= maxY; y++)
+				{
+					for (int z = minZ; z <= maxZ; z++)
+					{
+						diffX = point.X - x;
+						diffY = point.Y - y;
+						diffZ = point.Z - z;
+
+						if ((diffX * diffX) + (diffY * diffY) + (diffZ * diffZ) <= sqrNoisyRadius)
+						{
+							MCube *cube = getCube(x, y, z);
+							if (cube->getType() != MCube::CUBE_EAU)
+								cube->setType(MCube::CUBE_AIR);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	void add_world_to_vbo(void)
@@ -578,7 +776,6 @@ public :
 
 		if (bestIntersectionSide)
 		{
-			// std::cout << maxDist << " " << bestIntersectionT << ";" << (adjustedOrigin - inter).getSize() << std::endl;
 			inter *= MCube::CUBE_SIZE;
 		}
 

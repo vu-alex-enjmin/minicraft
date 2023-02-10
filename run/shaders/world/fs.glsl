@@ -6,6 +6,7 @@ in vec3 normal;
 in vec4 color;
 in vec2 uv;
 in float type;
+in float ao;
 
 uniform mat4 m;
 
@@ -46,6 +47,8 @@ void main()
 	vec3 diffuseColor = baseColor * ((sunLightDiffuse * sun_color) + (ambient_color * ambientAmount));
 	vec3 specularColor = sunLightSpecular * sun_color;
 
-	vec3 litColor = diffuseColor + specularColor;
+	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
+	vec3 litColor = diffuseColor * fragAo + specularColor;
+	
 	color_out = vec4(litColor, color.a);
 }

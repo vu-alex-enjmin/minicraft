@@ -5,6 +5,10 @@
 #include "cube.h"
 
 #define FOUR_CORNERS(a,b,c,d) corners[a],corners[d],corners[c],corners[b]
+// Système d'occlusion ambiante tirée de cet article : https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
+#define EIGHT_AO_NEIGHBOURS(a,b,c,d,e,f,g,h) aoNeighbours[a], aoNeighbours[b], aoNeighbours[c], aoNeighbours[d], aoNeighbours[e], aoNeighbours[f], aoNeighbours[g], aoNeighbours[h]
+#define AO_VALUE(side1,side2,corner) ((side1 && side2) ? 0 : (3 - (side1 + side2 + corner)))
+#define AO_FLOAT(aoInt) (aoInt/3.0f)
 
 /**
   * On utilise des chunks pour que si on modifie juste un cube, on ait pas
@@ -52,6 +56,9 @@ class MChunk
 				{
 					for (int z = 0; z < CHUNK_SIZE; z++)
 					{
+						if (!_Cubes[x][y][z].getDraw())
+							continue;
+
 						MCube::MCubeType cubeType = _Cubes[x][y][z].getType();
 						if (cubeType != MCube::CUBE_AIR)
 						{
@@ -79,18 +86,20 @@ class MChunk
 			}
 
 			//Créer les VBO
-			VboOpaque = new YVbo(4, opaqueVertexCount, YVbo::PACK_BY_ELEMENT_TYPE);
+			VboOpaque = new YVbo(5, opaqueVertexCount, YVbo::PACK_BY_ELEMENT_TYPE);
 			VboOpaque->setElementDescription(0, YVbo::Element(3)); //Sommet
 			VboOpaque->setElementDescription(1, YVbo::Element(3)); //Normale
 			VboOpaque->setElementDescription(2, YVbo::Element(2)); //UV
 			VboOpaque->setElementDescription(3, YVbo::Element(1)); //Type
+			VboOpaque->setElementDescription(4, YVbo::Element(1)); //Occlusion Ambiante
 			VboOpaque->createVboCpu();
 
-			VboTransparent = new YVbo(4, transparentVertexCount, YVbo::PACK_BY_ELEMENT_TYPE);
+			VboTransparent = new YVbo(5, transparentVertexCount, YVbo::PACK_BY_ELEMENT_TYPE);
 			VboTransparent->setElementDescription(0, YVbo::Element(3)); //Sommet
 			VboTransparent->setElementDescription(1, YVbo::Element(3)); //Normale
 			VboTransparent->setElementDescription(2, YVbo::Element(2)); //UV
 			VboTransparent->setElementDescription(3, YVbo::Element(1)); //Type
+			VboTransparent->setElementDescription(4, YVbo::Element(1)); //Occlusion Ambiante
 			VboTransparent->createVboCpu();
 
 			//Remplir les VBO
@@ -102,6 +111,9 @@ class MChunk
 				{
 					for (int z = 0; z < CHUNK_SIZE; z++)
 					{
+						if (!_Cubes[x][y][z].getDraw())
+							continue;
+
 						MCube::MCubeType cubeType = _Cubes[x][y][z].getType();
 						if (cubeType != MCube::CUBE_AIR)
 						{
@@ -124,45 +136,110 @@ class MChunk
 		}
 
 		//Ajoute un quad du cube. Attention CCW
-		int addQuadToVbo(YVbo * vbo, int iVertice, YVec3f & a, YVec3f & b, YVec3f & c, YVec3f & d, float type) {
+		int addQuadToVbo(
+			YVbo * vbo, int iVertice, 
+			YVec3f &a, YVec3f &b, YVec3f &c, YVec3f &d, 
+			float type, 
+			bool aoNeighbour0, bool aoNeighbour1, bool aoNeighbour2, bool aoNeighbour3, 
+			bool aoNeighbour4, bool aoNeighbour5, bool aoNeighbour6, bool aoNeighbour7)
+		{
 			YVec3f n = (a - b).cross(c - b).normalize();
 
-			// Premier triangle
-			vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
-			vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-			vbo->setElementValue(2, iVertice, 0, 1); // UV
-			vbo->setElementValue(3, iVertice, type); // type
+			int aoA = AO_VALUE(aoNeighbour7, aoNeighbour1, aoNeighbour0);
+			int aoB = AO_VALUE(aoNeighbour5, aoNeighbour7, aoNeighbour6);
+			int aoC = AO_VALUE(aoNeighbour3, aoNeighbour5, aoNeighbour4);
+			int aoD = AO_VALUE(aoNeighbour1, aoNeighbour3, aoNeighbour2);
 
-			iVertice++;
-			vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
-			vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-			vbo->setElementValue(2, iVertice, 1, 1); // UV
-			vbo->setElementValue(3, iVertice, type); // type
+			if (aoA + aoC >= aoB + aoD)
+			{
+				// Premier triangle
+				vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoA)); // Occlusion Ambiante
 
-			iVertice++;
-			vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
-			vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-			vbo->setElementValue(2, iVertice, 1, 0); // UV
-			vbo->setElementValue(3, iVertice, type); // type
+				iVertice++;
+				vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 1, 1); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoB)); // Occlusion Ambiante
 
-			// Second triangle
-			iVertice++;
-			vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
-			vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-			vbo->setElementValue(2, iVertice, 1, 0); // UV
-			vbo->setElementValue(3, iVertice, type); // type
+				iVertice++;
+				vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoC)); // Occlusion Ambiante
 
-			iVertice++;
-			vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
-			vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-			vbo->setElementValue(2, iVertice, 0, 0); // UV
-			vbo->setElementValue(3, iVertice, type); // type
+				// Second triangle
+				iVertice++;
+				vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoC)); // Occlusion Ambiante
 
-			iVertice++;
-			vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
-			vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-			vbo->setElementValue(2, iVertice, 0, 1); // UV
-			vbo->setElementValue(3, iVertice, type); // type
+				iVertice++;
+				vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 0, 0); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoD)); // Occlusion Ambiante
+
+				iVertice++;
+				vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoA)); // Occlusion Ambiante
+			}
+			else
+			{
+				// Premier triangle
+				vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoA)); // Occlusion Ambiante
+
+				iVertice++;
+				vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 1, 1); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoB)); // Occlusion Ambiante
+
+				iVertice++;
+				vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoD)); // Occlusion Ambiante
+
+				// Second triangle
+				iVertice++;
+				vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoD)); // Occlusion Ambiante
+
+				iVertice++;
+				vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 0, 0); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoB)); // Occlusion Ambiante
+
+				iVertice++;
+				vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
+				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(3, iVertice, type); // type
+				vbo->setElementValue(4, iVertice, AO_FLOAT(aoC)); // Occlusion Ambiante
+			}
 
 			return 6;
 		}
@@ -183,6 +260,10 @@ class MChunk
 				YVec3f(x + 1, y + 1, z + 1) * MCube::CUBE_SIZE,
 				YVec3f(x, y + 1, z + 1) * MCube::CUBE_SIZE
 			};
+
+			bool aoNeighbours[8 + 4 + 8];
+			fillAoNeighbours(x, y, z, aoNeighbours);
+
 			int vertexCount = 0;
 			float type = cube.getType();
 
@@ -195,7 +276,8 @@ class MChunk
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
 					FOUR_CORNERS(4, 7, 3, 0),
-					type
+					type,
+					EIGHT_AO_NEIGHBOURS(12, 19, 18, 11, 6, 7, 0 ,8)
 				);
 			}
 			
@@ -205,7 +287,8 @@ class MChunk
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
 					FOUR_CORNERS(6, 5, 1, 2),
-					type
+					type,
+					EIGHT_AO_NEIGHBOURS(16, 15, 14, 9, 2, 3, 4, 10)
 				);
 			}
 			
@@ -215,7 +298,8 @@ class MChunk
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
 					FOUR_CORNERS(5, 4, 0, 1),
-					type
+					type,
+					EIGHT_AO_NEIGHBOURS(14, 13, 12, 8, 0, 1, 2, 9)
 				);
 			}
 
@@ -225,7 +309,8 @@ class MChunk
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
 					FOUR_CORNERS(7, 6, 2, 3),
-					type
+					type,
+					EIGHT_AO_NEIGHBOURS(18, 17, 16, 10, 4, 5, 6, 11)
 				);
 			}
 
@@ -235,7 +320,8 @@ class MChunk
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
 					FOUR_CORNERS(1, 0, 3, 2),
-					type
+					type,
+					EIGHT_AO_NEIGHBOURS(2, 1, 0, 7, 6, 5, 4, 3)
 				);
 			}
 
@@ -245,7 +331,8 @@ class MChunk
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
 					FOUR_CORNERS(4, 5, 6, 7),
-					type
+					type,
+					EIGHT_AO_NEIGHBOURS(12, 13, 14, 15, 16, 17, 18, 19)
 				);
 			}
 
@@ -420,5 +507,51 @@ class MChunk
 					}
 		}
 
+		// Remplit les informations sur les voisins pour l'occlusion ambiante
+		void fillAoNeighbours(const int x, const int y, const int z, bool* aoNeighbours)
+		{
+			// Couche 1 (3x3-1) : la couche 3x3 au dessus, moins le centre
+			aoNeighbours[0] = cubeExistsAndIsOccluding(x - 1, y - 1, z - 1);
+			aoNeighbours[1] = cubeExistsAndIsOccluding(x, y - 1, z - 1);
+			aoNeighbours[2] = cubeExistsAndIsOccluding(x + 1, y - 1, z - 1);
+			aoNeighbours[3] = cubeExistsAndIsOccluding(x + 1, y, z - 1);
+			aoNeighbours[4] = cubeExistsAndIsOccluding(x + 1, y + 1, z - 1);
+			aoNeighbours[5] = cubeExistsAndIsOccluding(x, y + 1, z - 1);
+			aoNeighbours[6] = cubeExistsAndIsOccluding(x - 1, y + 1, z - 1);
+			aoNeighbours[7] = cubeExistsAndIsOccluding(x - 1, y, z - 1);
 
+			// Couche 2 (4) : les 4 coins de la couche 3x3 du milieu
+			aoNeighbours[8] = cubeExistsAndIsOccluding(x - 1, y - 1, z);
+			aoNeighbours[9] = cubeExistsAndIsOccluding(x + 1, y - 1, z);
+			aoNeighbours[10] = cubeExistsAndIsOccluding(x + 1, y + 1, z);
+			aoNeighbours[11] = cubeExistsAndIsOccluding(x - 1, y + 1, z);
+
+			// Couche 3 (3x3-1) : la couche 3x3 en dessous, moins le centre
+			aoNeighbours[12] = cubeExistsAndIsOccluding(x - 1, y - 1, z + 1);
+			aoNeighbours[13] = cubeExistsAndIsOccluding(x, y - 1, z + 1);
+			aoNeighbours[14] = cubeExistsAndIsOccluding(x + 1, y - 1, z + 1);
+			aoNeighbours[15] = cubeExistsAndIsOccluding(x + 1, y, z + 1);
+			aoNeighbours[16] = cubeExistsAndIsOccluding(x + 1, y + 1, z + 1);
+			aoNeighbours[17] = cubeExistsAndIsOccluding(x, y + 1, z + 1);
+			aoNeighbours[18] = cubeExistsAndIsOccluding(x - 1, y + 1, z + 1);
+			aoNeighbours[19] = cubeExistsAndIsOccluding(x - 1, y, z + 1);
+		}
+
+		bool cubeExistsAndIsOccluding(const int x, const int y, const int z)
+		{
+			if (x < 0)
+				return (Voisins[0] != NULL) && Voisins[0]->cubeExistsAndIsOccluding(x + CHUNK_SIZE, y, z);
+			if (x >= CHUNK_SIZE)
+				return (Voisins[1] != NULL) && Voisins[1]->cubeExistsAndIsOccluding(x - CHUNK_SIZE, y, z);
+			if (y < 0)
+				return (Voisins[2] != NULL) && Voisins[2]->cubeExistsAndIsOccluding(x, y + CHUNK_SIZE, z);
+			if (y >= CHUNK_SIZE)
+				return (Voisins[3] != NULL) && Voisins[3]->cubeExistsAndIsOccluding(x, y - CHUNK_SIZE, z);
+			if (z < 0)
+				return (Voisins[4] != NULL) && Voisins[4]->cubeExistsAndIsOccluding(x, y, z + CHUNK_SIZE);
+			if (z >= CHUNK_SIZE)
+				return (Voisins[5] != NULL) && Voisins[5]->cubeExistsAndIsOccluding(x, y, z - CHUNK_SIZE);
+
+			return _Cubes[x][y][z].isOpaque();
+		}
 };

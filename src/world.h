@@ -155,6 +155,8 @@ public :
 		float waterHeightF = MAT_HEIGHT_CUBES * 0.53f;
 		int waterHeight = waterHeightF;
 
+		int maxSandHeight = waterHeight + 2;
+
 		int minStoneHeight = 3;
 		int maxStoneHeight = 7;
 		
@@ -169,8 +171,8 @@ public :
 
 				float endHeightF = heightNoiseValue * maxSurfaceHeight + (1 - heightNoiseValue) * minSurfaceHeight;
 				int endHeight = endHeightF;
-				int sandHeight = waterHeight + 1 + (((endHeightF - endHeight) < 0.5) ? 2 : 1);
-
+				// int sandHeight = waterHeight + 1 + (((endHeightF - endHeight) < 0.5) ? 2 : 1);
+				int sandHeight = maxSandHeight - ((endHeightF - endHeight) >= 0.75);
 				int stoneHeight = endHeight - (stoneNoiseValue * maxStoneHeight + (1 - stoneNoiseValue) * minStoneHeight);
 				
 				for (z = endHeight - 1; z >= 0; z--)

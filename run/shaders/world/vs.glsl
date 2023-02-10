@@ -9,6 +9,7 @@ layout(location=0) in vec3 vs_position_in;
 layout(location=1) in vec3 vs_normal_in;
 layout(location=2) in vec2 vs_uv_in;
 layout(location=3) in float vs_type_in;
+layout(location=4) in float vs_ao_in;
 
 //Variables en sortie
 out vec4 worldPos;
@@ -16,6 +17,7 @@ out vec3 normal;
 out vec4 color;
 out vec2 uv;
 out float type;
+out float ao;
 
 #define CUBE_HERBE 0.0
 #define CUBE_TERRE 1.0
@@ -26,13 +28,15 @@ out float type;
 
 void main()
 {
-	vec4 vecIn = vec4(vs_position_in,1.0);
+	vec4 vecIn = vec4(vs_position_in, 1.0);
+
 	gl_Position = mvp * vecIn;
 	worldPos = m * vecIn;
 		
 	normal = (nmat * vec4(vs_normal_in,1.0)).xyz; 
 
 	uv = vs_uv_in;
+	ao = vs_ao_in;
 
 	//Couleur par défaut violet
 	color = vec4(1.0,1.0,0.0,1.0);

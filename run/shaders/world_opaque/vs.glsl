@@ -8,11 +8,6 @@ uniform mat4 mvp;
 uniform mat4 nmat;
 uniform vec3 camera_pos;
 
-uniform mat4 shadow_v;
-uniform mat4 shadow_p;
-uniform mat4 shadow_v2;
-uniform mat4 shadow_p2;
-
 layout(location=0) in vec3 vs_position_in;
 layout(location=1) in vec3 vs_normal_in;
 layout(location=2) in vec2 vs_uv_in;
@@ -24,19 +19,13 @@ out vec4 worldPos;
 out vec3 normal;
 out vec4 color;
 out vec2 uv;
-out float type;
 out float ao;
 out float normalizedDistToCamera;
-
-out float actualShadowDepth;
-out float actualShadowDepth2;
-out vec2 shadowUV;
-out vec2 shadowUV2;
+out float actualClipZ;
 
 #define CUBE_HERBE 0.0
 #define CUBE_TERRE 1.0
 #define CUBE_PIERRE 3.0
-#define CUBE_EAU 4.0
 #define CUBE_SABLE_01 17.0
 #define CUBE_LAINE_01 19.0
 
@@ -62,7 +51,7 @@ void main()
 	// 	worldPos.w
 	// );
 
-	// > Effet planÃ¨te
+	// > Effet planète
 	// vec3 relativePos = worldPos.xyz - camera_pos.xyz;
 	// float normalizedX = (relativePos.x) / (WORLD_SIZE);
 	// float normalizedY = (relativePos.y) / (WORLD_SIZE);
@@ -76,24 +65,23 @@ void main()
 	// );
 	
 	gl_Position = (p * v) * worldPos;
+	actualClipZ = gl_Position.z;
 	
 	normal = (nmat * vec4(vs_normal_in, 1.0)).xyz; 
 
 	uv = vs_uv_in;
 	ao = vs_ao_in;
 
-	//Couleur par dÃ©faut violet
+	//Couleur par défaut violet
 	color = vec4(1.0,0.0,1.0,1.0);
 	
 	//Couleur fonction du type
 	if(vs_type_in == CUBE_HERBE)
-		color = vec4(0.2, 0.55, 0.2, 1);
+		color = vec4(0.2, 0.55, 0.2, 1.0);
 	if(vs_type_in == CUBE_TERRE)
-		color = vec4(0.4, 0.32, 0.21, 1);
+		color = vec4(0.4, 0.32, 0.21, 1.0);
 	if(vs_type_in == CUBE_PIERRE)
-		color = vec4(0.4, 0.4, 0.4, 1);
-	if(vs_type_in == CUBE_EAU)
-		color = vec4(0.0, 0.5, 1.0, 0.7);
+		color = vec4(0.4, 0.4, 0.4, 1.0);
 	if(vs_type_in == CUBE_SABLE_01)
 		color = vec4(0.75, 0.75, 0.65, 1.0);
 	if(vs_type_in == CUBE_LAINE_01)
@@ -101,19 +89,4 @@ void main()
 
 	normalizedDistToCamera = clamp(length(worldPos.xyz - camera_pos) / (WORLD_SIZE * 0.5), 0.0, 1.0);
 	normalizedDistToCamera = normalizedDistToCamera * normalizedDistToCamera;
-	
-	type = vs_type_in;
-
-	// Ombrage
-	vec4 shadowViewPos = shadow_v * worldPos;
-	vec4 shadowClipPos = shadow_p * shadowViewPos;
-	actualShadowDepth = (shadowClipPos.z / shadowClipPos.w) * 0.5 + 0.5;
-	shadowUV = (shadowClipPos.xy / shadowClipPos.w) * 0.5 + 0.5;
-	shadowUV.x = shadowUV.x * 0.5;
-
-	vec4 shadowViewPos2 = shadow_v2 * worldPos;
-	vec4 shadowClipPos2 = shadow_p2 * shadowViewPos2;
-	actualShadowDepth2 = (shadowClipPos2.z / shadowClipPos2.w) * 0.5 + 0.5;
-	shadowUV2 = (shadowClipPos2.xy / shadowClipPos2.w) * 0.5 + 0.5;
-	shadowUV2.x = shadowUV2.x * 0.5 + 0.5;
 }

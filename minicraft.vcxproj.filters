@@ -45,6 +45,15 @@
     <Filter Include="Fichiers sources\noise">
       <UniqueIdentifier>{0f24b923-bef6-4832-99f5-c7e7fc71d33b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\shadow">
+      <UniqueIdentifier>{5428d052-f90c-4121-879d-52a2ed85b2e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\world_opaque">
+      <UniqueIdentifier>{079480da-9943-4e2f-9597-e7dff42e95be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\world_water">
+      <UniqueIdentifier>{f419cb69-8a4c-449a-b62f-5e3e449d18fa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\engine_minicraft.h">
@@ -149,6 +158,24 @@
     </None>
     <None Include="run\shaders\cube_debug\vs.glsl">
       <Filter>shaders\cube_debug</Filter>
+    </None>
+    <None Include="run\shaders\shadows\fs.glsl">
+      <Filter>shaders\shadow</Filter>
+    </None>
+    <None Include="run\shaders\shadows\vs.glsl">
+      <Filter>shaders\shadow</Filter>
+    </None>
+    <None Include="run\shaders\world_water\fs.glsl">
+      <Filter>shaders\world_water</Filter>
+    </None>
+    <None Include="run\shaders\world_water\vs.glsl">
+      <Filter>shaders\world_water</Filter>
+    </None>
+    <None Include="run\shaders\world_opaque\fs.glsl">
+      <Filter>shaders\world_opaque</Filter>
+    </None>
+    <None Include="run\shaders\world_opaque\vs.glsl">
+      <Filter>shaders\world_opaque</Filter>
     </None>
   </ItemGroup>
 </Project>

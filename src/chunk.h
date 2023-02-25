@@ -155,21 +155,21 @@ class MChunk
 				// Premier triangle
 				vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(2, iVertice, 1, 1); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoA)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 1, 1); // UV
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoB)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(2, iVertice, 0, 0); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoC)); // Occlusion Ambiante
 
@@ -177,21 +177,21 @@ class MChunk
 				iVertice++;
 				vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(2, iVertice, 0, 0); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoC)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 0, 0); // UV
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoD)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(2, iVertice, 1, 1); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoA)); // Occlusion Ambiante
 			}
@@ -200,21 +200,21 @@ class MChunk
 				// Premier triangle
 				vbo->setElementValue(0, iVertice, a.X, a.Y, a.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(2, iVertice, 1, 1); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoA)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 1, 1); // UV
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoB)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoD)); // Occlusion Ambiante
 
@@ -222,21 +222,21 @@ class MChunk
 				iVertice++;
 				vbo->setElementValue(0, iVertice, d.X, d.Y, d.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 1, 0); // UV
+				vbo->setElementValue(2, iVertice, 0, 1); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoD)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, b.X, b.Y, b.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 0, 0); // UV
+				vbo->setElementValue(2, iVertice, 1, 0); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoB)); // Occlusion Ambiante
 
 				iVertice++;
 				vbo->setElementValue(0, iVertice, c.X, c.Y, c.Z); // Sommet
 				vbo->setElementValue(1, iVertice, n.X, n.Y, n.Z); // Normale
-				vbo->setElementValue(2, iVertice, 0, 1); // UV
+				vbo->setElementValue(2, iVertice, 0, 0); // UV
 				vbo->setElementValue(3, iVertice, type); // type
 				vbo->setElementValue(4, iVertice, AO_FLOAT(aoC)); // Occlusion Ambiante
 			}

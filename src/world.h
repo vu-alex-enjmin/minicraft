@@ -22,7 +22,7 @@ public :
 	#ifdef _DEBUG
 	static const int MAT_SIZE = 1; //en nombre de chunks
 	#else
-	static const int MAT_SIZE = 4; //en nombre de chunks
+	static const int MAT_SIZE = 3; //en nombre de chunks
 	#endif // DEBUG
 
 	static const int MAT_HEIGHT = 3; //en nombre de chunks
@@ -151,7 +151,7 @@ public :
 		srand(seed);
 		CustomPerlin noise;
 		generate_base_terrain(noise, YVec3f(), seed);
-		carve_caves(noise, YVec3f(), seed + 2);
+		carve_caves(noise, YVec3f(), seed);
 
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
@@ -248,7 +248,7 @@ public :
 
 				// Compute worm trajectory
 				wormTrajectory.clear();
-				fillWithPerlinWormTrajectory(x, y, offset.X, offset.Y, seed, noise, wormTrajectory);
+				fillPerlinWormTrajectory(x, y, offset.X, offset.Y, seed, noise, wormTrajectory);
 
 				// Check that trajectory does not hit water
 				bool wormTrajectoryIsValid = true;
@@ -278,7 +278,7 @@ public :
 		}
 	}
 
-	void fillWithPerlinWormTrajectory(const int x, const int y, const int offsetX, const int offsetY, const int seed, CustomPerlin &noise, std::vector<YVec3f> &outTrajectory)
+	void fillPerlinWormTrajectory(const int x, const int y, const int offsetX, const int offsetY, const int seed, CustomPerlin &noise, std::vector<YVec3f> &outTrajectory)
 	{
 		// Parameters
 		static const float minXAngle = degToRad(-70.0f);
@@ -346,7 +346,7 @@ public :
 			xAngle = clamp(xAngle + xAngleChange, minXAngle, maxXAngle);
 			zAngle += zAngleChange;
 
-			survivalChance *= 0.99925f + 0.00075f * currentPoint.Z / MAT_HEIGHT_CUBES;
+			survivalChance *= 0.9995f + 0.0005f * currentPoint.Z / MAT_HEIGHT_CUBES;
 		}
 	}
 
@@ -354,7 +354,7 @@ public :
 	{
 		// > Compute carving parameters
 		static const float wormMaxRadius = 4.5f;
-		static const float wormMinRadius = 1.0f;
+		static const float wormMinRadius = 0.75f;
 		static const float wormMiddleRadius = lerp(wormMinRadius, wormMaxRadius, 0.5);
 		static const float radiusNoiseInfluence = 0.75f;
 

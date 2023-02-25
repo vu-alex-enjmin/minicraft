@@ -11,17 +11,32 @@
 #include "avatar.h"
 #include "world.h"
 
+#define SHADOW_CASCADE_COUNT 4
+// taille de la shadowMap d'une seule cascade
+#define SHADOWMAP_SIZE 8192
+
 class MEngineMinicraft : public YEngine {
 
 public:
 	YVbo* VboCube;
+	YFbo* FboSunShadow;
 	MWorld* World;
 	MAvatar* avatar;
+	YCamera* shadowCameras[SHADOW_CASCADE_COUNT];
+	YMat44 shadowCamerasVP[SHADOW_CASCADE_COUNT];
+	float cascadeDepths[SHADOW_CASCADE_COUNT+1];
+	float cascadeFarClipZ[SHADOW_CASCADE_COUNT];
+	int shadowMapRenderOffsets[SHADOW_CASCADE_COUNT][2];
 	SkyRenderer skyRenderer;
+
 	GLuint ShaderCubeDebug;
 	GLuint ShaderCube;
 	GLuint ShaderSun;
 	GLuint ShaderWorld;
+	GLuint ShaderWorldOpaque;
+	GLuint ShaderWorldWater;
+	GLuint ShaderShadows;
+
 	int pointCount;
 	int64_t timeOffset = 0;
 	float pickingRange = 3.5f;
@@ -44,6 +59,9 @@ public:
 		ShaderCubeDebug = Renderer->createProgram("shaders/cube_debug");
 		ShaderCube = Renderer->createProgram("shaders/cube");
 		ShaderWorld = Renderer->createProgram("shaders/world");
+		ShaderShadows = Renderer->createProgram("shaders/shadows");
+		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
+		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
 		skyRenderer.loadShaders();
 	}
 
@@ -60,6 +78,35 @@ public:
 
 		Renderer->setBackgroundColor(YColor(0.0f, 0.0f, 0.0f, 1.0f));
 		Renderer->Camera->setPosition(YVec3f(10, 10, 10));
+
+		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		{
+			shadowCameras[i] = new YCamera();
+		}
+		// TODO : replace with procedural computation, using the sum(1 to SHADOW_CASCADE_COUNT) logic
+		// (1 + 2 + 3 + 4...)
+		cascadeDepths[0] = NearPlane;
+		cascadeDepths[1] = lerp(NearPlane, FarPlane, 0.02f);
+		cascadeDepths[2] = lerp(NearPlane, FarPlane, 0.06f);
+		cascadeDepths[3] = lerp(NearPlane, FarPlane, 0.2f);
+		cascadeDepths[SHADOW_CASCADE_COUNT] = FarPlane;
+
+		// 1re map
+		shadowMapRenderOffsets[0][0] = 0;
+		shadowMapRenderOffsets[0][1] = 0;
+		// 2e map
+		shadowMapRenderOffsets[1][0] = SHADOWMAP_SIZE;
+		shadowMapRenderOffsets[1][1] = 0;
+		// 3e map
+		shadowMapRenderOffsets[2][0] = 0;
+		shadowMapRenderOffsets[2][1] = SHADOWMAP_SIZE;
+		// 4e map
+		shadowMapRenderOffsets[3][0] = SHADOWMAP_SIZE;
+		shadowMapRenderOffsets[3][1] = SHADOWMAP_SIZE;
+
+		//Creation des FBO
+		FboSunShadow = new YFbo(true, 1, 1.0f, true);
+		FboSunShadow->init(2*SHADOWMAP_SIZE, 2*SHADOWMAP_SIZE);
 
 		//Creation du VBO
 		VboCube = new YVbo(3, 36, YVbo::PACK_BY_ELEMENT_TYPE);
@@ -149,7 +196,6 @@ public:
 
 		//On relache la mémoire CPU
 		VboCube->deleteVboCpu();
-
 		
 		glFrontFace(GL_CW);
 
@@ -157,6 +203,9 @@ public:
 		World->init_world(0);
 
 		avatar = new MAvatar(Renderer->Camera, World);
+
+		glUseProgram(ShaderWorld);
+		FboSunShadow->setDepthAsShaderInput(GL_TEXTURE1, "sun_shadow_map");
 	}
 
 	void addQuad(Point& a, Point& b, Point& c, Point& d)
@@ -219,13 +268,18 @@ public:
 
 	void renderObjects()
 	{
-		glUseProgram(0);
+		// Mise à jour des valeurs du soleil
+		skyRenderer.updateSkyValues(timeOffset);
+
+		// Calcul des textures d'ombres
+		configureShadowCameras();
+		renderShadowMaps();
 
 		// Rendu des axes
+		glUseProgram(0);
 		renderAxii();
 
 		// Rendu du ciel et du soleil
-		skyRenderer.updateSkyValues(timeOffset);
 		skyRenderer.render(VboCube, 1, 10);
 
 		// Rendu de l'avatar
@@ -237,6 +291,119 @@ public:
 		// Calcul et rendu de la cible de picking
 		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
 		drawIntersectedCubeSide();
+	}
+
+	// Mostly adapted from : https://ogldev.org/www/tutorial49/tutorial49.html
+	void configureShadowCameras()
+	{
+		// Initialization
+		YCamera* baseCamera = Renderer->Camera;
+		
+		baseCamera->look();
+		YMat44 baseCameraP;
+		float matProjTab[16];
+		glGetFloatv(GL_PROJECTION_MATRIX, matProjTab);
+		memcpy(baseCameraP.Mat.t, matProjTab, 16 * sizeof(float));
+		baseCameraP.transpose();
+
+		YCamera baseCameraCopy = *baseCamera;
+		baseCameraCopy.moveTo(YVec3f());
+		YMat44 baseCameraCopyVInv = baseCameraCopy.getViewMatrix();
+		baseCameraCopyVInv.invert();
+
+		YCamera lightCamera;
+		lightCamera.Position = YVec3f();
+		lightCamera.LookAt = -skyRenderer.sunDirection;
+		lightCamera.updateVecs();
+		YMat44 lightCameraV = lightCamera.getViewMatrix();
+		
+		float aspectRatio = (float)Renderer->ScreenWidth / (float)Renderer->ScreenHeight;
+		float tanHalfVerticalFOV = std::tanf(degToRad(baseCamera->FovY / 2.0f));
+		float tanHalfHorizontalFOV = std::tanf(degToRad(baseCamera->FovY * aspectRatio / 2.0f));
+
+#pragma push_macro("max")
+#undef max
+#pragma push_macro("min")
+#undef min
+		// Do the configuration
+		YVec3f frustumCorners[8];
+		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		{
+			const float subFrustumNear = cascadeDepths[i];
+			const float subFrustumFar = cascadeDepths[i+1];
+
+			float xNear = subFrustumNear * tanHalfHorizontalFOV;
+			float xFar = subFrustumFar * tanHalfHorizontalFOV;
+			float yNear = subFrustumNear * tanHalfVerticalFOV;
+			float yFar = subFrustumFar * tanHalfVerticalFOV;
+
+			float minX = std::numeric_limits<float>::max();
+			float maxX = std::numeric_limits<float>::min();
+			float minY = std::numeric_limits<float>::max();
+			float maxY = std::numeric_limits<float>::min();
+			float minZ = std::numeric_limits<float>::max();
+			float maxZ = std::numeric_limits<float>::min();
+
+			frustumCorners[0] = YVec3f(xNear, yNear, -subFrustumNear);
+			frustumCorners[1] = YVec3f(-xNear, yNear, -subFrustumNear);
+			frustumCorners[2] = YVec3f(-xNear, -yNear, -subFrustumNear); 
+			frustumCorners[3] = YVec3f(xNear, -yNear, -subFrustumNear);
+			frustumCorners[4] = YVec3f(xFar, yFar, -subFrustumFar);
+			frustumCorners[5] = YVec3f(-xFar, yFar, -subFrustumFar);
+			frustumCorners[6] = YVec3f(-xFar, -yFar, -subFrustumFar); 
+			frustumCorners[7] = YVec3f(xFar, -yFar, -subFrustumFar);
+
+			for (int j = 0; j < 8; j++)
+			{
+				YVec3f lightSpaceFrustumCorner = lightCameraV * (baseCameraCopyVInv * frustumCorners[j]);
+
+				minX = std::min(minX, lightSpaceFrustumCorner.X);
+				maxX = std::max(maxX, lightSpaceFrustumCorner.X);
+				minY = std::min(minY, lightSpaceFrustumCorner.Y);
+				maxY = std::max(maxY, lightSpaceFrustumCorner.Y);
+				minZ = std::min(minZ, lightSpaceFrustumCorner.Z);
+				maxZ = std::max(maxZ, lightSpaceFrustumCorner.Z);
+			}
+
+			minZ -= FarPlane;
+			maxZ += FarPlane;
+
+			shadowCameras[i]->Position = Renderer->Camera->Position;
+			shadowCameras[i]->LookAt = -skyRenderer.sunDirection + Renderer->Camera->Position;
+			shadowCameras[i]->updateVecs();
+			shadowCameras[i]->setProjectionOrtho(minX, maxX, minY, maxY, minZ, maxZ);
+
+			cascadeFarClipZ[i] = (baseCameraP * YVec3f(0, 0, -subFrustumFar)).Z;
+		}
+#pragma pop_macro("min")
+#pragma pop_macro("max")
+	}
+
+	void renderShadowMaps()
+	{
+		YCamera* baseCamera = Renderer->Camera;
+		
+		glUseProgram(ShaderShadows);
+		FboSunShadow->setAsOutFBO(true, true);
+		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		{
+			Renderer->Camera = shadowCameras[i];
+			shadowCameras[i]->look();
+
+			glViewport(shadowMapRenderOffsets[i][0], shadowMapRenderOffsets[i][1], SHADOWMAP_SIZE, SHADOWMAP_SIZE);
+			Renderer->updateMatricesFromOgl();
+			Renderer->sendMatricesToShader(ShaderShadows);
+			World->render_world_vbo(false, false);
+
+			shadowCamerasVP[i] = Renderer->MatP;
+			shadowCamerasVP[i] *= Renderer->MatV;
+		}
+		FboSunShadow->setAsOutFBO(false, false);
+
+		Renderer->Camera = baseCamera;
+
+		Renderer->Camera->look();
+		glViewport(0, 0, Renderer->ScreenWidth, Renderer->ScreenHeight);
 	}
 
 	void renderAxii()
@@ -273,24 +440,40 @@ public:
 	void renderWorld()
 	{
 		glPushMatrix();
-			glUseProgram(ShaderWorld);
-			GLuint shaderWorld_sunColor = glGetUniformLocation(ShaderWorld, "sun_color");
-			glUniform3f(shaderWorld_sunColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
-			GLuint shaderWorld_ambientColor = glGetUniformLocation(ShaderWorld, "ambient_color");
-			glUniform3f(shaderWorld_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
-			GLuint shaderWorld_sunDirection = glGetUniformLocation(ShaderWorld, "sun_direction");
-			glUniform3f(shaderWorld_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
-
-			YVec3f cameraPos = Renderer->Camera->Position;
-			GLuint shaderWorld_cameraPos = glGetUniformLocation(ShaderWorld, "camera_pos");
-			glUniform3f(shaderWorld_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
-
 			// Opaque
+			loadWorldShader(ShaderWorldOpaque);
 			World->render_world_vbo(false, false);
 			// Transparent
-			Renderer->sendTimeToShader(DeltaTimeCumul, ShaderWorld);
+			loadWorldShader(ShaderWorldWater);
+			Renderer->sendTimeToShader(DeltaTimeCumul, ShaderWorldWater);
 			World->render_world_vbo(false, true);
 		glPopMatrix();
+	}
+
+	void loadWorldShader(GLuint shader)
+	{
+		glUseProgram(shader);
+		GLuint shaderWorld_sunColor = glGetUniformLocation(shader, "sun_color");
+		glUniform3f(shaderWorld_sunColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
+		GLuint shaderWorld_fogColor = glGetUniformLocation(shader, "fog_color");
+		glUniform3f(shaderWorld_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
+		GLuint shaderWorld_ambientColor = glGetUniformLocation(shader, "ambient_color");
+		glUniform3f(shaderWorld_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
+		GLuint shaderWorld_sunDirection = glGetUniformLocation(shader, "sun_direction");
+		glUniform3f(shaderWorld_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
+		YVec3f cameraPos = Renderer->Camera->Position;
+		GLuint shaderWorld_cameraPos = glGetUniformLocation(shader, "camera_pos");
+		glUniform3f(shaderWorld_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
+
+		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		{
+			GLuint shaderWorld_shadowVPi = glGetUniformLocation(shader, ("shadow_vp[" + std::to_string(i) + "]").c_str());
+			glUniformMatrix4fv(shaderWorld_shadowVPi, 1, true, shadowCamerasVP[i].Mat.t);
+			GLuint shaderWorld_shadowCascadeFarClipZi = glGetUniformLocation(shader, ("shadow_cascade_far_clip_z[" + std::to_string(i) + "]").c_str());
+			glUniform1f(shaderWorld_shadowCascadeFarClipZi, cascadeFarClipZ[i]);
+		}
+
+		Renderer->sendNearFarToShader(shader);
 	}
 
 	void drawIntersectedCubeSide()
@@ -380,7 +563,29 @@ public:
 		}
 	}
 
-	void resize(int width, int height) {
+	void DrawWireQuad(YVec3f a, YVec3f b, YVec3f c, YVec3f d, YColor color)
+	{
+		glColor3f(color.R, color.V, color.B);
+
+		glBegin(GL_LINES);
+
+		glVertex3f(a.X, a.Y, a.Z);
+		glVertex3f(b.X, b.Y, b.Z);
+
+		glVertex3f(b.X, b.Y, b.Z);
+		glVertex3f(c.X, c.Y, c.Z);
+
+		glVertex3f(c.X, c.Y, c.Z);
+		glVertex3f(d.X, d.Y, d.Z);
+
+		glVertex3f(d.X, d.Y, d.Z);
+		glVertex3f(a.X, a.Y, a.Z);
+
+		glEnd();
+	}
+
+	void resize(int width, int height) 
+	{
 
 	}
 
@@ -457,7 +662,6 @@ public:
 		);
 	}
 
-
 	void mouseClick(int button, int state, int x, int y, bool inUi)
 	{
 		if (button == GLUT_LEFT_BUTTON)
@@ -466,7 +670,6 @@ public:
 			middleButtonDown = (state == GLUT_DOWN);
 		else if (button == GLUT_RIGHT_BUTTON)
 			rightButtonDown = (state == GLUT_DOWN);
-
 
 		if (state == GLUT_DOWN)
 		{

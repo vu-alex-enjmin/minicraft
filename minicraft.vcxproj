@@ -45,6 +45,9 @@
     <ClCompile Include="src\time_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="run\shaders\world_opaque\fs.glsl" />
+    <None Include="run\shaders\world_water\fs.glsl" />
+    <None Include="run\shaders\shadows\fs.glsl" />
     <None Include="run\shaders\birds\fs.glsl" />
     <None Include="run\shaders\birds\vs.glsl" />
     <None Include="run\shaders\cube\fs.glsl" />
@@ -56,6 +59,9 @@
     <None Include="run\shaders\sun\vs.glsl" />
     <None Include="run\shaders\world\fs.glsl" />
     <None Include="run\shaders\world\vs.glsl" />
+    <None Include="run\shaders\shadows\vs.glsl" />
+    <None Include="run\shaders\world_water\vs.glsl" />
+    <None Include="run\shaders\world_opaque\vs.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

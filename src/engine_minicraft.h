@@ -21,14 +21,22 @@ public:
 	YVbo* VboCube;
 	MWorld* World;
 	MAvatar* avatar;
+	SkyRenderer skyRenderer;
+
+	// Shadows
 	YFbo* shadowFbos[SHADOW_CASCADE_COUNT];
 	YCamera* shadowCameras[SHADOW_CASCADE_COUNT];
 	YMat44 shadowCamerasVP[SHADOW_CASCADE_COUNT];
 	float cascadeDepths[SHADOW_CASCADE_COUNT+1];
 	float cascadeFarClipZ[SHADOW_CASCADE_COUNT];
 	int shadowMapRenderOffsets[SHADOW_CASCADE_COUNT][2];
-	SkyRenderer skyRenderer;
 
+	// Post Processing
+	bool postProcessEnabled;
+	YFbo* screenFbos[2];
+	int currentScreenFboIndex;
+	GLuint ShaderGammaCorrectPP;
+	
 	GLuint ShaderCubeDebug;
 	GLuint ShaderCube;
 	GLuint ShaderSun;
@@ -62,6 +70,7 @@ public:
 		ShaderShadows = Renderer->createProgram("shaders/shadows");
 		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
+		ShaderGammaCorrectPP = Renderer->createProgram("shaders/postprocess/gamma");
 		skyRenderer.loadShaders();
 	}
 
@@ -74,6 +83,8 @@ public:
 
 	void init()
 	{
+		postProcessEnabled = true;
+
 		YLog::log(YLog::ENGINE_INFO, "Minicraft Started : initialisation");
 
 		Renderer->Camera->setPosition(YVec3f(10, 10, 10));
@@ -87,6 +98,11 @@ public:
 		World->init_world(0);
 
 		avatar = new MAvatar(Renderer->Camera, World);
+
+		screenFbos[0] = new YFbo(true);
+		screenFbos[0]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
+		screenFbos[1] = new YFbo(true);
+		screenFbos[1]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
 	}
 
 	void initShadows()
@@ -278,6 +294,9 @@ public:
 		configureShadowCameras();
 		renderShadowMaps();
 
+		if (postProcessEnabled)
+			screenFbos[0]->setAsOutFBO(true, true);
+
 		// Rendu des axes
 		glUseProgram(0);
 		renderAxii();
@@ -294,6 +313,13 @@ public:
 		// Calcul et rendu de la cible de picking
 		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
 		drawIntersectedCubeSide();
+
+		if (postProcessEnabled)
+			screenFbos[0]->setAsOutFBO(false, false);
+		
+		// Post Process
+		currentScreenFboIndex = 0;
+		postProcess();
 	}
 
 	// Mostly adapted from : https://ogldev.org/www/tutorial49/tutorial49.html
@@ -571,6 +597,46 @@ public:
 		}
 	}
 
+	void postProcess()
+	{
+		if (!postProcessEnabled)
+			return;
+		
+		// Init
+		glDepthMask(GL_FALSE);
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+
+		// Actual post processing
+		doSinglePostProcess(ShaderGammaCorrectPP, true);
+
+		// Cleanup
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glDepthMask(GL_TRUE);
+	}
+
+	void doSinglePostProcess(GLuint postProcessShader, bool isLast = false)
+	{
+		// Choix des FBO pour le post process
+		YFbo* fboWithScreenData = screenFbos[currentScreenFboIndex];
+		currentScreenFboIndex = 1 - currentScreenFboIndex;
+		YFbo* targetFbo = screenFbos[currentScreenFboIndex];
+		
+		// "Ecriture" du post process dans un FBO, ou sur l'écran si c'est le dernier post-process
+		if (!isLast)
+			targetFbo->setAsOutFBO(true, false);
+
+		glUseProgram(postProcessShader);
+		fboWithScreenData->setColorAsShaderInput(0, GL_TEXTURE0, "TexColor");
+		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE1, "TexDepth");
+		Renderer->sendNearFarToShader(postProcessShader);
+		Renderer->drawFullScreenQuad();
+
+		if (!isLast)
+			targetFbo->setAsOutFBO(false, false);
+	}
+
 	void drawWireQuad(YVec3f a, YVec3f b, YVec3f c, YVec3f d, YColor color)
 	{
 		glColor3f(color.R, color.V, color.B);
@@ -594,7 +660,8 @@ public:
 
 	void resize(int width, int height) 
 	{
-
+		screenFbos[0]->resize(width, height);
+		screenFbos[1]->resize(width, height);
 	}
 
 	void incrementTime()
@@ -638,6 +705,8 @@ public:
 				dKeyDown = down;
 			else if ((key == 'c' || key == 'C') && down)
 				firstPerson = !firstPerson;
+			else if ((key == 'p' || key == 'P') && down)
+				postProcessEnabled = !postProcessEnabled;
 		}
 		else
 		{

@@ -54,6 +54,9 @@
     <Filter Include="shaders\world_water">
       <UniqueIdentifier>{f419cb69-8a4c-449a-b62f-5e3e449d18fa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\postprocess\gamma">
+      <UniqueIdentifier>{dbd91403-577b-4f24-b07f-45813dd95718}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\engine_minicraft.h">
@@ -126,9 +129,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="run\shaders\postprocess\fs.glsl">
-      <Filter>shaders\postprocess</Filter>
-    </None>
     <None Include="run\shaders\world\fs.glsl">
       <Filter>shaders\world</Filter>
     </None>
@@ -176,6 +176,12 @@
     </None>
     <None Include="run\shaders\world_opaque\vs.glsl">
       <Filter>shaders\world_opaque</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\gamma\fs.glsl">
+      <Filter>shaders\postprocess\gamma</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\vs.glsl">
+      <Filter>shaders\postprocess\gamma</Filter>
     </None>
   </ItemGroup>
 </Project>

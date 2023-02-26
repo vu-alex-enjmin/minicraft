@@ -45,6 +45,7 @@
     <ClCompile Include="src\time_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="run\shaders\postprocess\vs.glsl" />
     <None Include="run\shaders\world_opaque\fs.glsl" />
     <None Include="run\shaders\world_water\fs.glsl" />
     <None Include="run\shaders\shadows\fs.glsl" />
@@ -54,7 +55,7 @@
     <None Include="run\shaders\cube\vs.glsl" />
     <None Include="run\shaders\cube_debug\fs.glsl" />
     <None Include="run\shaders\cube_debug\vs.glsl" />
-    <None Include="run\shaders\postprocess\fs.glsl" />
+    <None Include="run\shaders\postprocess\gamma\fs.glsl" />
     <None Include="run\shaders\sun\fs.glsl" />
     <None Include="run\shaders\sun\vs.glsl" />
     <None Include="run\shaders\world\fs.glsl" />

@@ -19,9 +19,9 @@ class MEngineMinicraft : public YEngine {
 
 public:
 	YVbo* VboCube;
-	YFbo* FboSunShadow;
 	MWorld* World;
 	MAvatar* avatar;
+	YFbo* shadowFbos[SHADOW_CASCADE_COUNT];
 	YCamera* shadowCameras[SHADOW_CASCADE_COUNT];
 	YMat44 shadowCamerasVP[SHADOW_CASCADE_COUNT];
 	float cascadeDepths[SHADOW_CASCADE_COUNT+1];
@@ -79,17 +79,19 @@ public:
 		Renderer->setBackgroundColor(YColor(0.0f, 0.0f, 0.0f, 1.0f));
 		Renderer->Camera->setPosition(YVec3f(10, 10, 10));
 
+		cascadeDepths[0] = NearPlane;
+		cascadeDepths[1] = lerp(NearPlane, FarPlane, 0.03f);
+		cascadeDepths[2] = lerp(NearPlane, FarPlane, 0.09f);
+		cascadeDepths[3] = lerp(NearPlane, FarPlane, 0.3f);
+		cascadeDepths[SHADOW_CASCADE_COUNT] = FarPlane;
+
+		//Creation des FBO
 		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 		{
 			shadowCameras[i] = new YCamera();
+			shadowFbos[i] = new YFbo(true, 1, 1.0f, true);
+			shadowFbos[i]->init(SHADOWMAP_SIZE, SHADOWMAP_SIZE);
 		}
-		// TODO : replace with procedural computation, using the sum(1 to SHADOW_CASCADE_COUNT) logic
-		// (1 + 2 + 3 + 4...)
-		cascadeDepths[0] = NearPlane;
-		cascadeDepths[1] = lerp(NearPlane, FarPlane, 0.02f);
-		cascadeDepths[2] = lerp(NearPlane, FarPlane, 0.06f);
-		cascadeDepths[3] = lerp(NearPlane, FarPlane, 0.2f);
-		cascadeDepths[SHADOW_CASCADE_COUNT] = FarPlane;
 
 		// 1re map
 		shadowMapRenderOffsets[0][0] = 0;
@@ -103,10 +105,6 @@ public:
 		// 4e map
 		shadowMapRenderOffsets[3][0] = SHADOWMAP_SIZE;
 		shadowMapRenderOffsets[3][1] = SHADOWMAP_SIZE;
-
-		//Creation des FBO
-		FboSunShadow = new YFbo(true, 1, 1.0f, true);
-		FboSunShadow->init(2*SHADOWMAP_SIZE, 2*SHADOWMAP_SIZE);
 
 		//Creation du VBO
 		VboCube = new YVbo(3, 36, YVbo::PACK_BY_ELEMENT_TYPE);
@@ -203,9 +201,6 @@ public:
 		World->init_world(0);
 
 		avatar = new MAvatar(Renderer->Camera, World);
-
-		glUseProgram(ShaderWorld);
-		FboSunShadow->setDepthAsShaderInput(GL_TEXTURE1, "sun_shadow_map");
 	}
 
 	void addQuad(Point& a, Point& b, Point& c, Point& d)
@@ -384,21 +379,21 @@ public:
 		YCamera* baseCamera = Renderer->Camera;
 		
 		glUseProgram(ShaderShadows);
-		FboSunShadow->setAsOutFBO(true, true);
 		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 		{
+			shadowFbos[i]->setAsOutFBO(true, true);
 			Renderer->Camera = shadowCameras[i];
 			shadowCameras[i]->look();
 
-			glViewport(shadowMapRenderOffsets[i][0], shadowMapRenderOffsets[i][1], SHADOWMAP_SIZE, SHADOWMAP_SIZE);
+			glViewport(0, 0, SHADOWMAP_SIZE, SHADOWMAP_SIZE);
 			Renderer->updateMatricesFromOgl();
 			Renderer->sendMatricesToShader(ShaderShadows);
 			World->render_world_vbo(false, false);
 
 			shadowCamerasVP[i] = Renderer->MatP;
 			shadowCamerasVP[i] *= Renderer->MatV;
+			shadowFbos[i]->setAsOutFBO(false, false);
 		}
-		FboSunShadow->setAsOutFBO(false, false);
 
 		Renderer->Camera = baseCamera;
 
@@ -453,24 +448,28 @@ public:
 	void loadWorldShader(GLuint shader)
 	{
 		glUseProgram(shader);
-		GLuint shaderWorld_sunColor = glGetUniformLocation(shader, "sun_color");
-		glUniform3f(shaderWorld_sunColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
-		GLuint shaderWorld_fogColor = glGetUniformLocation(shader, "fog_color");
-		glUniform3f(shaderWorld_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
-		GLuint shaderWorld_ambientColor = glGetUniformLocation(shader, "ambient_color");
-		glUniform3f(shaderWorld_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
-		GLuint shaderWorld_sunDirection = glGetUniformLocation(shader, "sun_direction");
-		glUniform3f(shaderWorld_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
+		GLuint shader_sunColor = glGetUniformLocation(shader, "sun_color");
+		glUniform3f(shader_sunColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
+		GLuint shader_fogColor = glGetUniformLocation(shader, "fog_color");
+		glUniform3f(shader_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
+		GLuint shader_ambientColor = glGetUniformLocation(shader, "ambient_color");
+		glUniform3f(shader_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
+		GLuint shader_sunDirection = glGetUniformLocation(shader, "sun_direction");
+		glUniform3f(shader_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
 		YVec3f cameraPos = Renderer->Camera->Position;
-		GLuint shaderWorld_cameraPos = glGetUniformLocation(shader, "camera_pos");
-		glUniform3f(shaderWorld_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
+		GLuint shader_cameraPos = glGetUniformLocation(shader, "camera_pos");
+		glUniform3f(shader_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
 
+		// Shadow map data
+		GLuint shader_invShadowmapSize = glGetUniformLocation(shader, "inv_shadowmap_size");
+		glUniform1f(shader_invShadowmapSize, 1.0 / SHADOWMAP_SIZE);
 		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 		{
-			GLuint shaderWorld_shadowVPi = glGetUniformLocation(shader, ("shadow_vp[" + std::to_string(i) + "]").c_str());
-			glUniformMatrix4fv(shaderWorld_shadowVPi, 1, true, shadowCamerasVP[i].Mat.t);
-			GLuint shaderWorld_shadowCascadeFarClipZi = glGetUniformLocation(shader, ("shadow_cascade_far_clip_z[" + std::to_string(i) + "]").c_str());
-			glUniform1f(shaderWorld_shadowCascadeFarClipZi, cascadeFarClipZ[i]);
+			GLuint shader_shadowVPi = glGetUniformLocation(shader, ("shadow_vp[" + std::to_string(i) + "]").c_str());
+			glUniformMatrix4fv(shader_shadowVPi, 1, true, shadowCamerasVP[i].Mat.t);
+			GLuint shader_shadowCascadeFarClipZi = glGetUniformLocation(shader, ("shadow_cascade_far_clip_z[" + std::to_string(i) + "]").c_str());
+			glUniform1f(shader_shadowCascadeFarClipZi, cascadeFarClipZ[i]);
+			shadowFbos[i]->setDepthAsShaderInput(GL_TEXTURE1 + i, ("shadow_map[" + std::to_string(i) + "]").c_str());
 		}
 
 		Renderer->sendNearFarToShader(shader);

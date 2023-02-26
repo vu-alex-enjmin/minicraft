@@ -19,32 +19,26 @@ uniform vec3 ambient_color;
 uniform vec3 fog_color;
 uniform vec3 sun_direction;
 uniform vec2 near_far;
+uniform float inv_shadowmap_size;
 
 #define SHADOW_CASCADE_COUNT 4
-#define SHADOWMAP_SIZE 1024
-uniform sampler2D sun_shadow_map;
+uniform sampler2D shadow_map[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far_clip_z[SHADOW_CASCADE_COUNT];
 uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
 
 out vec4 color_out;
 
-vec2 adaptUVToCascade(vec2 baseUV, int cascade)
+float sampleShadow(vec2 uv, float refDepth, int cascade)
 {
-	vec2 adaptedUV = baseUV * 0.5;
-	adaptedUV.x += 0.5 * (cascade % 2);
-	adaptedUV.y += 0.5 * (cascade / 2);
-	return adaptedUV;
-}
-
-float sampleShadow(vec2 uv, float refDepth)
-{
-	return (refDepth > texture2D(sun_shadow_map, uv).r) ? 0.0 : 1.0;
+	return (refDepth > texture2D(shadow_map[cascade], uv).r) ? 0.0 : 1.0;
 }
 
 float getShadowValue()
 {
-	const float shadowBiases[SHADOW_CASCADE_COUNT] = float[SHADOW_CASCADE_COUNT]( 0.00005, 0.00015, 0.000425, 0.0015 );
+	const float shadowBiases[SHADOW_CASCADE_COUNT] = float[SHADOW_CASCADE_COUNT]( 
+		0.000125, 0.0001625, 0.0004, 0.001
+	);
 
 	int cascadeIndex = SHADOW_CASCADE_COUNT - 1;
 	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
@@ -58,13 +52,19 @@ float getShadowValue()
 
 	vec4 shadowClipPos = shadow_vp[cascadeIndex] * worldPos;
 	float actualShadowDepth = (shadowClipPos.z / shadowClipPos.w) * 0.5 + 0.5;
-	actualShadowDepth -= shadowBiases[cascadeIndex];
-	vec2 myUV = (shadowClipPos.xy / shadowClipPos.w) * 0.5 + 0.5;
-	myUV = adaptUVToCascade(myUV, cascadeIndex);
+	float biasedShadowDepth = actualShadowDepth - shadowBiases[cascadeIndex];
+	vec2 shadowUV = (shadowClipPos.xy / shadowClipPos.w) * 0.5 + 0.5;
 
-	// vec2 baseShadowMapOffset = vec2(1.0, 1.0) / SHADOWMAP_SIZE;
-	
-	return sampleShadow(myUV, actualShadowDepth);
+	float baseOffset = inv_shadowmap_size;
+	float shadowValue = 0.125 * (
+		4 * sampleShadow(shadowUV, biasedShadowDepth, cascadeIndex) +
+		sampleShadow(shadowUV + vec2(baseOffset, 0), biasedShadowDepth, cascadeIndex) +
+		sampleShadow(shadowUV + vec2(0, -baseOffset), biasedShadowDepth, cascadeIndex) +
+		sampleShadow(shadowUV + vec2(0, baseOffset), biasedShadowDepth, cascadeIndex) + 
+		sampleShadow(shadowUV + vec2(-baseOffset, 0), biasedShadowDepth, cascadeIndex)
+	);
+		
+	return shadowValue;
 }
 
 void main()

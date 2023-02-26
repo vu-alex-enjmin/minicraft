@@ -76,9 +76,21 @@ public:
 	{
 		YLog::log(YLog::ENGINE_INFO, "Minicraft Started : initialisation");
 
-		Renderer->setBackgroundColor(YColor(0.0f, 0.0f, 0.0f, 1.0f));
 		Renderer->Camera->setPosition(YVec3f(10, 10, 10));
 
+		initShadows();
+		createVboCube();
+		
+		glFrontFace(GL_CW);
+
+		World = new MWorld();
+		World->init_world(0);
+
+		avatar = new MAvatar(Renderer->Camera, World);
+	}
+
+	void initShadows()
+	{
 		cascadeDepths[0] = NearPlane;
 		cascadeDepths[1] = lerp(NearPlane, FarPlane, 0.03f);
 		cascadeDepths[2] = lerp(NearPlane, FarPlane, 0.09f);
@@ -105,7 +117,10 @@ public:
 		// 4e map
 		shadowMapRenderOffsets[3][0] = SHADOWMAP_SIZE;
 		shadowMapRenderOffsets[3][1] = SHADOWMAP_SIZE;
+	}
 
+	void createVboCube()
+	{
 		//Creation du VBO
 		VboCube = new YVbo(3, 36, YVbo::PACK_BY_ELEMENT_TYPE);
 
@@ -194,13 +209,6 @@ public:
 
 		//On relache la mémoire CPU
 		VboCube->deleteVboCpu();
-		
-		glFrontFace(GL_CW);
-
-		World = new MWorld();
-		World->init_world(0);
-
-		avatar = new MAvatar(Renderer->Camera, World);
 	}
 
 	void addQuad(Point& a, Point& b, Point& c, Point& d)
@@ -563,7 +571,7 @@ public:
 		}
 	}
 
-	void DrawWireQuad(YVec3f a, YVec3f b, YVec3f c, YVec3f d, YColor color)
+	void drawWireQuad(YVec3f a, YVec3f b, YVec3f c, YVec3f d, YColor color)
 	{
 		glColor3f(color.R, color.V, color.B);
 

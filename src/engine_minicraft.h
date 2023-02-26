@@ -377,7 +377,8 @@ public:
 	void renderShadowMaps()
 	{
 		YCamera* baseCamera = Renderer->Camera;
-		
+
+		glDrawBuffer(GL_NONE);
 		glUseProgram(ShaderShadows);
 		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 		{
@@ -394,8 +395,8 @@ public:
 			shadowCamerasVP[i] *= Renderer->MatV;
 			shadowFbos[i]->setAsOutFBO(false, false);
 		}
-
 		Renderer->Camera = baseCamera;
+		glDrawBuffer(GL_BACK);
 
 		Renderer->Camera->look();
 		glViewport(0, 0, Renderer->ScreenWidth, Renderer->ScreenHeight);

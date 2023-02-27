@@ -22,7 +22,7 @@ uniform vec2 near_far;
 uniform float inv_shadowmap_size;
 
 #define SHADOW_CASCADE_COUNT 4
-uniform sampler2D shadow_map[SHADOW_CASCADE_COUNT];
+uniform sampler2DShadow shadow_map[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far_clip_z[SHADOW_CASCADE_COUNT];
 uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
@@ -31,13 +31,13 @@ out vec4 color_out;
 
 float sampleShadow(vec2 uv, float refDepth, int cascade)
 {
-	return (refDepth > texture2D(shadow_map[cascade], uv).r) ? 0.0 : 1.0;
+	return texture(shadow_map[cascade], vec3(uv, refDepth));
 }
 
 float getShadowValue()
 {
 	const float shadowBiases[SHADOW_CASCADE_COUNT] = float[SHADOW_CASCADE_COUNT]( 
-		0.000125, 0.0001625, 0.0004, 0.001
+		0.000125, 0.0004, 0.001, 0.00125
 	);
 
 	int cascadeIndex = SHADOW_CASCADE_COUNT - 1;
@@ -51,19 +51,11 @@ float getShadowValue()
 	}
 
 	vec4 shadowClipPos = shadow_vp[cascadeIndex] * worldPos;
+	vec2 shadowUV = (shadowClipPos.xy / shadowClipPos.w) * 0.5 + 0.5;
 	float actualShadowDepth = (shadowClipPos.z / shadowClipPos.w) * 0.5 + 0.5;
 	float biasedShadowDepth = actualShadowDepth - shadowBiases[cascadeIndex];
-	vec2 shadowUV = (shadowClipPos.xy / shadowClipPos.w) * 0.5 + 0.5;
 
-	float baseOffset = inv_shadowmap_size;
-	float shadowValue = 0.125 * (
-		4 * sampleShadow(shadowUV, biasedShadowDepth, cascadeIndex) +
-		sampleShadow(shadowUV + vec2(baseOffset, 0), biasedShadowDepth, cascadeIndex) +
-		sampleShadow(shadowUV + vec2(0, -baseOffset), biasedShadowDepth, cascadeIndex) +
-		sampleShadow(shadowUV + vec2(0, baseOffset), biasedShadowDepth, cascadeIndex) + 
-		sampleShadow(shadowUV + vec2(-baseOffset, 0), biasedShadowDepth, cascadeIndex)
-	);
-		
+	float shadowValue = sampleShadow(shadowUV, biasedShadowDepth, cascadeIndex);
 	return shadowValue;
 }
 

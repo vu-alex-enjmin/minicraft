@@ -57,6 +57,9 @@
     <Filter Include="shaders\postprocess\gamma">
       <UniqueIdentifier>{dbd91403-577b-4f24-b07f-45813dd95718}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\postprocess\vignette">
+      <UniqueIdentifier>{234c3584-ca24-49d5-9da6-199522222c73}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\engine_minicraft.h">
@@ -180,7 +183,13 @@
     <None Include="run\shaders\postprocess\gamma\fs.glsl">
       <Filter>shaders\postprocess\gamma</Filter>
     </None>
-    <None Include="run\shaders\postprocess\vs.glsl">
+    <None Include="run\shaders\postprocess\vignette\vs.glsl">
+      <Filter>shaders\postprocess\vignette</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\vignette\fs.glsl">
+      <Filter>shaders\postprocess\vignette</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\gamma\vs.glsl">
       <Filter>shaders\postprocess\gamma</Filter>
     </None>
   </ItemGroup>

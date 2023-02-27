@@ -29,12 +29,12 @@ public:
 	YMat44 shadowCamerasVP[SHADOW_CASCADE_COUNT];
 	float cascadeDepths[SHADOW_CASCADE_COUNT+1];
 	float cascadeFarClipZ[SHADOW_CASCADE_COUNT];
-	int shadowMapRenderOffsets[SHADOW_CASCADE_COUNT][2];
 
 	// Post Processing
 	bool postProcessEnabled;
 	YFbo* screenFbos[2];
 	int currentScreenFboIndex;
+	GLuint ShaderVignettePP;
 	GLuint ShaderGammaCorrectPP;
 	
 	GLuint ShaderCubeDebug;
@@ -70,6 +70,7 @@ public:
 		ShaderShadows = Renderer->createProgram("shaders/shadows");
 		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
+		ShaderVignettePP = Renderer->createProgram("shaders/postprocess/vignette");
 		ShaderGammaCorrectPP = Renderer->createProgram("shaders/postprocess/gamma");
 		skyRenderer.loadShaders();
 	}
@@ -120,19 +121,6 @@ public:
 			shadowFbos[i] = new YFbo(true, 1, 1.0f, true);
 			shadowFbos[i]->init(SHADOWMAP_SIZE, SHADOWMAP_SIZE);
 		}
-
-		// 1re map
-		shadowMapRenderOffsets[0][0] = 0;
-		shadowMapRenderOffsets[0][1] = 0;
-		// 2e map
-		shadowMapRenderOffsets[1][0] = SHADOWMAP_SIZE;
-		shadowMapRenderOffsets[1][1] = 0;
-		// 3e map
-		shadowMapRenderOffsets[2][0] = 0;
-		shadowMapRenderOffsets[2][1] = SHADOWMAP_SIZE;
-		// 4e map
-		shadowMapRenderOffsets[3][0] = SHADOWMAP_SIZE;
-		shadowMapRenderOffsets[3][1] = SHADOWMAP_SIZE;
 	}
 
 	void createVboCube()
@@ -608,7 +596,14 @@ public:
 		glDisable(GL_DEPTH_TEST);
 
 		// Actual post processing
-		doSinglePostProcess(ShaderGammaCorrectPP, true);
+		// Water Reflection
+		// God Rays
+		// FXAA
+		// Gamma Correction
+		// doSinglePostProcess(ShaderGammaCorrectPP);
+		// Chromatic Aberration
+		// Vignette
+		doSinglePostProcess(ShaderVignettePP, true);
 
 		// Cleanup
 		glEnable(GL_DEPTH_TEST);

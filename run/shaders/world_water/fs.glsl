@@ -86,8 +86,7 @@ void main()
 		sunLightSpecular = 0;
 	sunLightSpecular = pow(sunLightSpecular, 1000);
 
-	float ambientAmount = max(0.8, dot(normalize(vec3(-0.25, -0.5, 1.0)), normal)) * 0.5;
-
+	float ambientAmount = 1.0;
 	sunLightDiffuse = 1.0f;
 	vec3 baseColor = color.xyz;
 	vec3 diffuse = baseColor * ((sunLightDiffuse * shadowValue) * sun_color) * fragAo;

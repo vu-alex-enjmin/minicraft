@@ -118,8 +118,8 @@ void SkyRenderer::updateSunAndSkyColors()
 
 	// Ambient Color
 	YColor brightAmbientColor(0.6f, 0.65f, 0.7f, 1);
-	YColor darkAmbientColor(0.15f, 0.15f, 0.3f, 1);
-	YColor sunAppearanceAmbientColor(0.4f, 0.5f, 0.3f, 1);
+	YColor darkAmbientColor(0.225f, 0.225f, 0.35f, 1);
+	YColor sunAppearanceAmbientColor(0.6f, 0.5f, 0.4f, 1);
 	if (sunAppearanceSkyColorT > 0)
 	{
 		ambientColor = sunAppearanceAmbientColor.interpolate(brightAmbientColor, sunAppearanceSkyColorT);

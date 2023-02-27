@@ -84,8 +84,7 @@ void main()
 		sunLightSpecular = 0;
 	sunLightSpecular = pow(sunLightSpecular, 2) * 0.33;
 
-	float ambientAmount = max(0.8, dot(normalize(vec3(-0.25, -0.5, 1.0)), normal)) * 0.75;
-
+	float ambientAmount = 1.0;
 	vec3 baseColor = color.xyz;
 	vec3 diffuse = baseColor * ((min(sunLightDiffuse, shadowValue)) * sun_color);
 	vec3 ambient = baseColor * (ambientAmount * ambient_color);
@@ -113,4 +112,5 @@ void main()
 
 	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
 	// color_out = vec4(texture2D(sun_shadow_map, uv).r, 0, 0, 1);
+	// color_out = vec4(ambient_color, 1);
 }

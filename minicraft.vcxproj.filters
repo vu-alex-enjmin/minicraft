@@ -60,6 +60,9 @@
     <Filter Include="shaders\postprocess\vignette">
       <UniqueIdentifier>{234c3584-ca24-49d5-9da6-199522222c73}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\postprocess\chromatic_aberration">
+      <UniqueIdentifier>{f73a8c85-a13a-4110-884b-43c90a8d1517}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\engine_minicraft.h">
@@ -191,6 +194,12 @@
     </None>
     <None Include="run\shaders\postprocess\gamma\vs.glsl">
       <Filter>shaders\postprocess\gamma</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\chromatic_aberration\vs.glsl">
+      <Filter>shaders\postprocess\chromatic_aberration</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\chromatic_aberration\fs.glsl">
+      <Filter>shaders\postprocess\chromatic_aberration</Filter>
     </None>
   </ItemGroup>
 </Project>

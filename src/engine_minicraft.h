@@ -35,6 +35,7 @@ public:
 	YFbo* screenFbos[2];
 	int currentScreenFboIndex;
 	GLuint ShaderVignettePP;
+	GLuint ShaderChromaticAberrationPP;
 	GLuint ShaderGammaCorrectPP;
 	
 	GLuint ShaderCubeDebug;
@@ -71,6 +72,7 @@ public:
 		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
 		ShaderVignettePP = Renderer->createProgram("shaders/postprocess/vignette");
+		ShaderChromaticAberrationPP = Renderer->createProgram("shaders/postprocess/chromatic_aberration");
 		ShaderGammaCorrectPP = Renderer->createProgram("shaders/postprocess/gamma");
 		skyRenderer.loadShaders();
 	}
@@ -128,7 +130,7 @@ public:
 		//Creation du VBO
 		VboCube = new YVbo(3, 36, YVbo::PACK_BY_ELEMENT_TYPE);
 
-		//Dï¿½finition du contenu du VBO
+		//Définition du contenu du VBO
 		float normals[3 * 6] =
 		{
 			1, 0, 0,
@@ -185,7 +187,7 @@ public:
 		VboCube->setElementDescription(1, YVbo::Element(3)); //Normale
 		VboCube->setElementDescription(2, YVbo::Element(2)); //UV
 
-		//On demande d'allouer la mï¿½moire cotï¿½ CPU
+		//On demande d'allouer la mémoire coté CPU
 		VboCube->createVboCpu();
 
 		Point corners[4];
@@ -211,7 +213,7 @@ public:
 		//On envoie le contenu au GPU
 		VboCube->createVboGpu();
 
-		//On relache la mï¿½moire CPU
+		//On relache la mémoire CPU
 		VboCube->deleteVboCpu();
 	}
 
@@ -230,9 +232,9 @@ public:
 
 	void addPoint(Point& p)
 	{
-		VboCube->setElementValue(0, pointCount, p.x, p.y, p.z); //Sommet (liï¿½ au layout(0) du shader)
-		VboCube->setElementValue(1, pointCount, p.nX, p.nY, p.nZ);   //Normale (liï¿½ au layout(1) du shader)
-		VboCube->setElementValue(2, pointCount, p.u, p.v);      //UV (liï¿½ au layout(2) du shader)
+		VboCube->setElementValue(0, pointCount, p.x, p.y, p.z); //Sommet (lié au layout(0) du shader)
+		VboCube->setElementValue(1, pointCount, p.nX, p.nY, p.nZ);   //Normale (lié au layout(1) du shader)
+		VboCube->setElementValue(2, pointCount, p.u, p.v);      //UV (lié au layout(2) du shader)
 		pointCount++;
 	}
 
@@ -275,7 +277,7 @@ public:
 
 	void renderObjects()
 	{
-		// Mise ï¿½ jour des valeurs du soleil
+		// Mise à jour des valeurs du soleil
 		skyRenderer.updateSkyValues(timeOffset);
 
 		// Calcul des textures d'ombres
@@ -449,7 +451,7 @@ public:
 			glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
 			glScalef(0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE);
 			glScalef(avatar->Width, avatar->Width, avatar->Height);
-			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices ï¿½ partir des deux matrices OGL
+			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
 			Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
 			VboCube->render(); //Demande le rendu du VBO
 		glPopMatrix();
@@ -602,6 +604,7 @@ public:
 		// Gamma Correction
 		// doSinglePostProcess(ShaderGammaCorrectPP);
 		// Chromatic Aberration
+		doSinglePostProcess(ShaderChromaticAberrationPP);
 		// Vignette
 		doSinglePostProcess(ShaderVignettePP, true);
 
@@ -618,7 +621,7 @@ public:
 		currentScreenFboIndex = 1 - currentScreenFboIndex;
 		YFbo* targetFbo = screenFbos[currentScreenFboIndex];
 		
-		// "Ecriture" du post process dans un FBO, ou sur l'ï¿½cran si c'est le dernier post-process
+		// "Ecriture" du post process dans un FBO, ou sur l'écran si c'est le dernier post-process
 		if (!isLast)
 			targetFbo->setAsOutFBO(true, false);
 

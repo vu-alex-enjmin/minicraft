@@ -45,6 +45,7 @@
     <ClCompile Include="src\time_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="run\shaders\postprocess\chromatic_aberration\fs.glsl" />
     <None Include="run\shaders\postprocess\gamma\vs.glsl" />
     <None Include="run\shaders\postprocess\vignette\fs.glsl" />
     <None Include="run\shaders\world_opaque\fs.glsl" />
@@ -65,6 +66,7 @@
     <None Include="run\shaders\world_water\vs.glsl" />
     <None Include="run\shaders\world_opaque\vs.glsl" />
     <None Include="run\shaders\postprocess\vignette\vs.glsl" />
+    <None Include="run\shaders\postprocess\chromatic_aberration\vs.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

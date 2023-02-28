@@ -14,7 +14,7 @@ void main (void)
 	float radius = 1.75;
 	float intensity = 1.0;
 
-	vec4 color = texture2D( TexColor , uv );
+	vec4 color = texture( TexColor , uv );
 
 	float vignette = length((uv - 0.5) * 2.0) / radius;
 	vignette = vignette * vignette;

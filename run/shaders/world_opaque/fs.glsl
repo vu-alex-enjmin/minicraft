@@ -90,7 +90,6 @@ void main()
 	
 	/*
 	color_out = vec4(fragAo, fragAo, fragAo, color.a);
-	// color_out = vec4(texture2D(sun_shadow_map, uv).r, 0, 0, 1);
 	if (actualClipZ <= shadow_cascade_far_clip_z[0])
 		color_out *= vec4(1, 0.8, 0.8, 1);
 	else if (actualClipZ <= shadow_cascade_far_clip_z[1])
@@ -103,6 +102,5 @@ void main()
 	*/
 
 	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
-	// color_out = vec4(texture2D(sun_shadow_map, uv).r, 0, 0, 1);
 	// color_out = vec4(ambient_color, 1);
 }

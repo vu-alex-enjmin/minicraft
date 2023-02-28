@@ -8,11 +8,6 @@ uniform mat4 mvp;
 uniform mat4 nmat;
 uniform vec3 camera_pos;
 
-uniform mat4 shadow_v;
-uniform mat4 shadow_p;
-uniform mat4 shadow_v2;
-uniform mat4 shadow_p2;
-
 layout(location=0) in vec3 vs_position_in;
 layout(location=1) in vec3 vs_normal_in;
 layout(location=2) in vec2 vs_uv_in;
@@ -27,11 +22,6 @@ out vec2 uv;
 out float type;
 out float ao;
 out float normalizedDistToCamera;
-
-out float actualShadowDepth;
-out float actualShadowDepth2;
-out vec2 shadowUV;
-out vec2 shadowUV2;
 
 #define CUBE_HERBE 0.0
 #define CUBE_TERRE 1.0
@@ -103,17 +93,4 @@ void main()
 	normalizedDistToCamera = normalizedDistToCamera * normalizedDistToCamera;
 	
 	type = vs_type_in;
-
-	// Ombrage
-	vec4 shadowViewPos = shadow_v * worldPos;
-	vec4 shadowClipPos = shadow_p * shadowViewPos;
-	actualShadowDepth = (shadowClipPos.z / shadowClipPos.w) * 0.5 + 0.5;
-	shadowUV = (shadowClipPos.xy / shadowClipPos.w) * 0.5 + 0.5;
-	shadowUV.x = shadowUV.x * 0.5;
-
-	vec4 shadowViewPos2 = shadow_v2 * worldPos;
-	vec4 shadowClipPos2 = shadow_p2 * shadowViewPos2;
-	actualShadowDepth2 = (shadowClipPos2.z / shadowClipPos2.w) * 0.5 + 0.5;
-	shadowUV2 = (shadowClipPos2.xy / shadowClipPos2.w) * 0.5 + 0.5;
-	shadowUV2.x = shadowUV2.x * 0.5 + 0.5;
 }

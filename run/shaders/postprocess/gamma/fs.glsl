@@ -8,7 +8,7 @@ out vec4 color_out;
 
 void main (void)
 {
-	vec4 color = texture2D( TexColor , uv );
+	vec4 color = texture( TexColor , uv );
 
     //Gamma correction
     color.r = pow(color.r,1.0/2.2);

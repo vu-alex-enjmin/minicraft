@@ -28,9 +28,9 @@ void main (void)
 	float horizontalIntensity = 1.0;
 	float verticalIntensity = 0.75;
 
-	float red = texture2D(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.0)).r;
-	float green = texture2D(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.025)).g;
-	float blue = texture2D(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.05)).b;
+	float red = texture(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.0)).r;
+	float green = texture(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.025)).g;
+	float blue = texture(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.05)).b;
 
 	color_out = vec4(red, green, blue, 1.0);
 }

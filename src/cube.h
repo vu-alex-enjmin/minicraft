@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stdio.h>
+#include <string>
+
+typedef unsigned char uint8;
 
 class MCube
 {
@@ -60,7 +63,6 @@ public :
 		uint8 _Code; //premier bit si on doit le draw ou pas, le reste un des 127 types
 		
 	public :
-		YVec3f _NavDir;
 		float debugValue;
 		static const int CUBE_SIZE = 1;
 		
@@ -152,54 +154,54 @@ public :
 			_Code = code;
 		}
 
-		static string getName(MCubeType type)
+		static std::string getName(MCubeType type)
 		{
 			switch (type)
 			{
-			case CUBE_HERBE: return string("CUBE_HERBE"); break;
-			case CUBE_TERRE: return string("CUBE_TERRE"); break;
-			case CUBE_BOIS: return string("CUBE_BOIS"); break;
-			case CUBE_PIERRE: return string("CUBE_PIERRE"); break;
-			case CUBE_EAU: return string("CUBE_EAU"); break;
-			case CUBE_VERRE: return string("CUBE_VERRE"); break;
-			case CUBE_STAIRS: return string("CUBE_STAIRS"); break;				
-			case CUBE_PLANCHE_01: return string("CUBE_PLANCHE_01"); break;
-			case CUBE_PLANCHE_02: return string("CUBE_PLANCHE_02"); break;
-			case CUBE_PLANCHE_03: return string("CUBE_PLANCHE_03"); break;
-			case CUBE_PLANCHE_04: return string("CUBE_PLANCHE_04"); break;
-			case CUBE_PLANCHE_05: return string("CUBE_PLANCHE_05"); break;
-			case CUBE_PLANCHE_06: return string("CUBE_PLANCHE_06"); break;
-			case CUBE_BRIQUES: return string("CUBE_BRIQUES"); break;
-			case CUBE_DALLES_01: return string("CUBE_DALLES_01"); break;
-			case CUBE_DALLES_02: return string("CUBE_DALLES_02"); break;
-			case CUBE_DALLES_03: return string("CUBE_DALLES_03"); break;
-			case CUBE_DALLES_04: return string("CUBE_DALLES_04"); break;
-			case CUBE_SABLE_01: return string("CUBE_SABLE_01"); break;
-			case CUBE_SABLE_02: return string("CUBE_SABLE_02"); break;
-			case CUBE_LAINE_01: return string("CUBE_LAINE_01"); break;
-			case CUBE_LAINE_02: return string("CUBE_LAINE_02"); break;
-			case CUBE_LAINE_03: return string("CUBE_LAINE_03"); break;
-			case CUBE_LAINE_04: return string("CUBE_LAINE_04"); break;
-			case CUBE_LAINE_05: return string("CUBE_LAINE_05"); break;
-			case CUBE_LAINE_06: return string("CUBE_LAINE_06"); break;
-			case CUBE_LAINE_07: return string("CUBE_LAINE_07"); break;
-			case CUBE_LAINE_08: return string("CUBE_LAINE_08"); break;
-			case CUBE_LAINE_09: return string("CUBE_LAINE_09"); break;
-			case CUBE_LAINE_10: return string("CUBE_LAINE_10"); break;
-			case CUBE_LAINE_11: return string("CUBE_LAINE_11"); break;
-			case CUBE_LAINE_12: return string("CUBE_LAINE_12"); break;
-			case CUBE_LAINE_13: return string("CUBE_LAINE_13"); break;
-			case CUBE_LAINE_14: return string("CUBE_LAINE_14"); break;
-			case CUBE_LAINE_15: return string("CUBE_LAINE_15"); break;
-			case CUBE_LAINE_16: return string("CUBE_LAINE_16"); break;
-			case CUBE_CUSTOM_IMAGE: return string("CUBE_CUSTOM_IMAGE"); break;
-			case CUBE_LIVRE: return string("CUBE_LIVRE"); break;
-			case CUBE_TRONC: return string("CUBE_TRONC"); break;
-			case CUBE_BRANCHES: return string("CUBE_BRANCHES"); break;
-			case CUBE_AIR: return string("CUBE_AIR"); break;
+			case CUBE_HERBE: return std::string("CUBE_HERBE"); break;
+			case CUBE_TERRE: return std::string("CUBE_TERRE"); break;
+			case CUBE_BOIS: return std::string("CUBE_BOIS"); break;
+			case CUBE_PIERRE: return std::string("CUBE_PIERRE"); break;
+			case CUBE_EAU: return std::string("CUBE_EAU"); break;
+			case CUBE_VERRE: return std::string("CUBE_VERRE"); break;
+			case CUBE_STAIRS: return std::string("CUBE_STAIRS"); break;				
+			case CUBE_PLANCHE_01: return std::string("CUBE_PLANCHE_01"); break;
+			case CUBE_PLANCHE_02: return std::string("CUBE_PLANCHE_02"); break;
+			case CUBE_PLANCHE_03: return std::string("CUBE_PLANCHE_03"); break;
+			case CUBE_PLANCHE_04: return std::string("CUBE_PLANCHE_04"); break;
+			case CUBE_PLANCHE_05: return std::string("CUBE_PLANCHE_05"); break;
+			case CUBE_PLANCHE_06: return std::string("CUBE_PLANCHE_06"); break;
+			case CUBE_BRIQUES: return std::string("CUBE_BRIQUES"); break;
+			case CUBE_DALLES_01: return std::string("CUBE_DALLES_01"); break;
+			case CUBE_DALLES_02: return std::string("CUBE_DALLES_02"); break;
+			case CUBE_DALLES_03: return std::string("CUBE_DALLES_03"); break;
+			case CUBE_DALLES_04: return std::string("CUBE_DALLES_04"); break;
+			case CUBE_SABLE_01: return std::string("CUBE_SABLE_01"); break;
+			case CUBE_SABLE_02: return std::string("CUBE_SABLE_02"); break;
+			case CUBE_LAINE_01: return std::string("CUBE_LAINE_01"); break;
+			case CUBE_LAINE_02: return std::string("CUBE_LAINE_02"); break;
+			case CUBE_LAINE_03: return std::string("CUBE_LAINE_03"); break;
+			case CUBE_LAINE_04: return std::string("CUBE_LAINE_04"); break;
+			case CUBE_LAINE_05: return std::string("CUBE_LAINE_05"); break;
+			case CUBE_LAINE_06: return std::string("CUBE_LAINE_06"); break;
+			case CUBE_LAINE_07: return std::string("CUBE_LAINE_07"); break;
+			case CUBE_LAINE_08: return std::string("CUBE_LAINE_08"); break;
+			case CUBE_LAINE_09: return std::string("CUBE_LAINE_09"); break;
+			case CUBE_LAINE_10: return std::string("CUBE_LAINE_10"); break;
+			case CUBE_LAINE_11: return std::string("CUBE_LAINE_11"); break;
+			case CUBE_LAINE_12: return std::string("CUBE_LAINE_12"); break;
+			case CUBE_LAINE_13: return std::string("CUBE_LAINE_13"); break;
+			case CUBE_LAINE_14: return std::string("CUBE_LAINE_14"); break;
+			case CUBE_LAINE_15: return std::string("CUBE_LAINE_15"); break;
+			case CUBE_LAINE_16: return std::string("CUBE_LAINE_16"); break;
+			case CUBE_CUSTOM_IMAGE: return std::string("CUBE_CUSTOM_IMAGE"); break;
+			case CUBE_LIVRE: return std::string("CUBE_LIVRE"); break;
+			case CUBE_TRONC: return std::string("CUBE_TRONC"); break;
+			case CUBE_BRANCHES: return std::string("CUBE_BRANCHES"); break;
+			case CUBE_AIR: return std::string("CUBE_AIR"); break;
 			}
 
-			return string("INCONNU");
+			return std::string("INCONNU");
 		}
 
 		static bool isManipulable(MCubeType type)

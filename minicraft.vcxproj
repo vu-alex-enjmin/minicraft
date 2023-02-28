@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -21,6 +21,8 @@
   <ItemGroup>
     <ClInclude Include="..\src\engine\noise\perlin.h" />
     <ClInclude Include="..\src\engine\render\camera.h" />
+    <ClInclude Include="src\atlas_uv_mapper.h" />
+    <ClInclude Include="src\cube_side.h" />
     <ClInclude Include="src\random_utils.h" />
     <ClInclude Include="src\my_math.h" />
     <ClInclude Include="src\sky_renderer.h" />
@@ -36,6 +38,7 @@
   <ItemGroup>
     <ClCompile Include="..\src\engine\render\fbo.cpp" />
     <ClCompile Include="..\src\engine\render\vbo.cpp" />
+    <ClCompile Include="src\atlas_uv_mapper.cpp" />
     <ClCompile Include="src\random_utils.cpp" />
     <ClCompile Include="src\my_math.cpp" />
     <ClCompile Include="src\my_physics.cpp" />

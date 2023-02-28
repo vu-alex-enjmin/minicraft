@@ -3,7 +3,6 @@
 //Variables en entree
 in vec4 worldPos;
 in vec3 normal;
-in vec4 color;
 in vec2 uv;
 in float ao;
 in float normalizedDistToCamera;
@@ -26,6 +25,8 @@ uniform sampler2DShadow shadow_map[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far_clip_z[SHADOW_CASCADE_COUNT];
 uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
+
+uniform sampler2D tex_atlas;
 
 out vec4 color_out;
 
@@ -77,7 +78,7 @@ void main()
 	sunLightSpecular = pow(sunLightSpecular, 2) * 0.33;
 
 	float ambientAmount = 1.0;
-	vec3 baseColor = color.xyz;
+	vec3 baseColor = texture(tex_atlas, uv).rgb;
 	vec3 diffuse = baseColor * ((min(sunLightDiffuse, shadowValue)) * sun_color);
 	vec3 ambient = baseColor * (ambientAmount * ambient_color);
 	vec3 specular = (shadowValue * sunLightSpecular) * sun_color;
@@ -86,7 +87,7 @@ void main()
 	// fragAo = 1.0;
 	vec3 litColor = (ambient + diffuse + specular) * fragAo;
 	// litColor = fragAo * (baseColor * 0.25 + baseColor * ambient_color * 0.75);
-	color_out = vec4(litColor, color.a);
+	color_out = vec4(litColor, 1.0);
 	
 	/*
 	color_out = vec4(fragAo, fragAo, fragAo, color.a);
@@ -103,4 +104,6 @@ void main()
 
 	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
 	// color_out = vec4(ambient_color, 1);
+
+	// color_out = vec4(uv, 0, 1);
 }

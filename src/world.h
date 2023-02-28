@@ -6,6 +6,7 @@
 #include "engine/utils/types_3d.h"
 #include "cube.h"
 #include "chunk.h"
+#include "atlas_uv_mapper.h"
 #include "engine/noise/perlin.h"
 #include "customPerlin.h"
 #include "random_utils.h"
@@ -33,13 +34,13 @@ public :
 
 	MChunk * Chunks[MAT_SIZE][MAT_SIZE][MAT_HEIGHT];
 	
-	MWorld()
+	MWorld(AtlasUVMapper *uvMapper)
 	{
 		//On crée les chunks
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
 				for(int z=0;z<MAT_HEIGHT;z++)
-					Chunks[x][y][z] = new MChunk(x,y,z);
+					Chunks[x][y][z] = new MChunk(x,y,z,uvMapper);
 
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
@@ -68,8 +69,6 @@ public :
 
 					Chunks[x][y][z]->setVoisins(cxPrev,cxNext,cyPrev,cyNext,czPrev,czNext);
 				}
-
-					
 	}
 
 	inline MCube * getCube(int x, int y, int z)

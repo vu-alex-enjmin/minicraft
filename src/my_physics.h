@@ -1,18 +1,8 @@
 #ifndef __MY_PHYSICS__
 #define __MY_PHYSICS__
 
+#include "cube_side.h"
 #include "engine/utils/types_3d.h"
-
-enum cubeSide
-{
-	NONE = 0,
-	NEG_X,
-	POS_X,
-	NEG_Y,
-	POS_Y,
-	NEG_Z,
-	POS_Z,
-};
 
 bool linePlaneIntersection(
 	const YVec3f &lineOrigin, const YVec3f &lineDirection,

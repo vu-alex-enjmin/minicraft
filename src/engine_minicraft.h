@@ -120,6 +120,62 @@ public:
 		screenFbos[1]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
 
 		atlasTex = YTexManager::getInstance()->loadTexture("textures/atlas.png");
+
+		initUi();
+	}
+
+	GUISlider *vignetteIntensity;
+	GUISlider *vignetteRadius;
+	GUISlider *chromaticAberrationHorizontal;
+	GUISlider *chromaticAberrationVertical;
+
+	void initUi()
+	{
+		constexpr uint16 headerX = 12;
+		constexpr uint16 paramX = headerX + 16;
+		uint16 y = 36;
+
+		addHeader("Vignette", headerX, y);
+		addParamSlider("Intensity", paramX, y, 0, 1, 1.0, &vignetteIntensity);
+		addParamSlider("Radius", paramX, y, 0.5, 3.0, 1.75, &vignetteRadius);
+		y += 4;
+		addHeader("Chromatic Aberration", headerX, y);
+		addParamSlider("Horizontal", paramX, y, 0, 2.0, 1.0, &chromaticAberrationHorizontal);
+		addParamSlider("Vertical", paramX, y, 0, 2.0, 0.75, &chromaticAberrationVertical);
+	}
+
+	void addHeader(const std::string& labelName, uint16 x, uint16& y, GUILabel **addedLabel = nullptr)
+	{
+		GUILabel* label = new GUILabel();
+		label->Text = labelName;
+		label->X = x;
+		label->Y = y;
+		y += label->Height;
+		ScreenParams->addElement(label);
+		if (addedLabel != nullptr)
+			*addedLabel = label;
+	}
+
+	void addParamSlider(const std::string &labelName, uint16 x, uint16 &y, float min, float max, float startValue, GUISlider **addedSlider = nullptr, GUILabel **addedLabel = nullptr)
+	{
+		GUILabel *label = new GUILabel();
+		label->Text = labelName;
+		label->X = x;
+		label->Y = y;
+		x += 120;
+		ScreenParams->addElement(label);
+		if (addedLabel != nullptr)
+			*addedLabel = label;
+		
+		GUISlider *slider = new GUISlider();
+		slider->setPos(x, y);
+		slider->setSize(120, 20);
+		slider->setMaxMin(max, min);
+		slider->setValue(startValue);
+		y += slider->Height + 2;
+		ScreenParams->addElement(slider);
+		if (addedSlider != nullptr)
+			*addedSlider = slider;
 	}
 
 	void initShadows()
@@ -619,9 +675,15 @@ public:
 		// Gamma Correction
 		// doSinglePostProcess(ShaderGammaCorrectPP);
 		// Chromatic Aberration
-		doSinglePostProcess(ShaderChromaticAberrationPP);
+		initPostProcess(ShaderChromaticAberrationPP);
+		sendSliderValueToShader(chromaticAberrationHorizontal, "horizontal_intensity", ShaderChromaticAberrationPP);
+		sendSliderValueToShader(chromaticAberrationVertical, "vertical_intensity", ShaderChromaticAberrationPP);
+		doPostProcess();
 		// Vignette
-		doSinglePostProcess(ShaderVignettePP, true);
+		initPostProcess(ShaderVignettePP);
+		sendSliderValueToShader(vignetteIntensity, "intensity", ShaderVignettePP);
+		sendSliderValueToShader(vignetteRadius, "radius", ShaderVignettePP);
+		doPostProcess(true);
 
 		// Cleanup
 		glEnable(GL_DEPTH_TEST);
@@ -629,21 +691,32 @@ public:
 		glDepthMask(GL_TRUE);
 	}
 
-	void doSinglePostProcess(GLuint postProcessShader, bool isLast = false)
+	void sendSliderValueToShader(GUISlider *slider, const char* paramName, GLuint shader)
+	{
+		GLuint location = glGetUniformLocation(shader, paramName);
+		glUniform1f(location, slider->Value);
+	}
+
+	void initPostProcess(GLuint postProcessShader)
+	{
+		glUseProgram(postProcessShader);
+		currentScreenFboIndex = 1 - currentScreenFboIndex;
+	}
+
+	void doPostProcess(bool isLast = false)
 	{
 		// Choix des FBO pour le post process
-		YFbo* fboWithScreenData = screenFbos[currentScreenFboIndex];
-		currentScreenFboIndex = 1 - currentScreenFboIndex;
+		YFbo* fboWithScreenData = screenFbos[1 - currentScreenFboIndex];
 		YFbo* targetFbo = screenFbos[currentScreenFboIndex];
 		
 		// "Ecriture" du post process dans un FBO, ou sur l'�cran si c'est le dernier post-process
 		if (!isLast)
 			targetFbo->setAsOutFBO(true, false);
-
-		glUseProgram(postProcessShader);
+		
 		fboWithScreenData->setColorAsShaderInput(0, GL_TEXTURE0, "TexColor");
-		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE1, "TexDepth");
-		Renderer->sendNearFarToShader(postProcessShader);
+		fboWithScreenData->setColorAsShaderInput(1, GL_TEXTURE1, "TexNormal");
+		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE2, "TexDepth");
+		Renderer->sendNearFarToShader(YRenderer::CURRENT_SHADER);
 		Renderer->drawFullScreenQuad();
 
 		if (!isLast)

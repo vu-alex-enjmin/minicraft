@@ -4,16 +4,14 @@ in vec2 uv;
 
 uniform sampler2D TexColor;
 
-out vec4 color_out;
+uniform float intensity;
+uniform float radius;
 
 // Params :
 // Radius, Intensity
 
 void main (void)
 {
-	float radius = 1.75;
-	float intensity = 1.0;
-
 	vec4 color = texture( TexColor , uv );
 
 	float vignette = length((uv - 0.5) * 2.0) / radius;

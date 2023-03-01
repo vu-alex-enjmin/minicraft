@@ -4,7 +4,8 @@ in vec2 uv;
 
 uniform sampler2D TexColor;
 
-out vec4 color_out;
+uniform float horizontal_intensity;
+uniform float vertical_intensity;
 
 // Params :
 // Horizontal Intensity
@@ -25,12 +26,9 @@ vec2 getDistortedUv(float horizontalIntensity, float verticalIntensity, float mu
 
 void main (void)
 {
-	float horizontalIntensity = 1.0;
-	float verticalIntensity = 0.75;
-
-	float red = texture(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.0)).r;
-	float green = texture(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.025)).g;
-	float blue = texture(TexColor, getDistortedUv(horizontalIntensity, verticalIntensity, 1.05)).b;
+	float red = texture(TexColor, getDistortedUv(horizontal_intensity, vertical_intensity, 1.0)).r;
+	float green = texture(TexColor, getDistortedUv(horizontal_intensity, vertical_intensity, 1.025)).g;
+	float blue = texture(TexColor, getDistortedUv(horizontal_intensity, vertical_intensity, 1.05)).b;
 
 	color_out = vec4(red, green, blue, 1.0);
 }

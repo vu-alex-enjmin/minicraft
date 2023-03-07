@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Fichiers sources">
@@ -65,6 +65,9 @@
     </Filter>
     <Filter Include="textures">
       <UniqueIdentifier>{db18efde-7a5b-46e1-9163-8acde0e9fc70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\postprocess\screenspace_reflections">
+      <UniqueIdentifier>{87363554-33e0-4e3a-9eae-b4bdb426033c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -212,6 +215,12 @@
     </None>
     <None Include="run\shaders\postprocess\chromatic_aberration\fs.glsl">
       <Filter>shaders\postprocess\chromatic_aberration</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\screenspace_reflections\fs.glsl">
+      <Filter>shaders\postprocess\screenspace_reflections</Filter>
+    </None>
+    <None Include="run\shaders\postprocess\screenspace_reflections\vs.glsl">
+      <Filter>shaders\postprocess\screenspace_reflections</Filter>
     </None>
   </ItemGroup>
 </Project>

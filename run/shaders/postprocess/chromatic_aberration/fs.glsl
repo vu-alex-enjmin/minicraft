@@ -7,9 +7,7 @@ uniform sampler2D TexColor;
 uniform float horizontal_intensity;
 uniform float vertical_intensity;
 
-// Params :
-// Horizontal Intensity
-// Vertical Intensity
+out vec4 color_out;
 
 vec2 getDistortedUv(float horizontalIntensity, float verticalIntensity, float multiplier)
 {

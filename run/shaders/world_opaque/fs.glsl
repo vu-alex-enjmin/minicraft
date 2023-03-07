@@ -69,17 +69,19 @@ void main()
 	vec3 sunHalfVec = normalize(viewVec + sunDir); 
 
 	float sunLightDiffuse = max(0, dot(sunDir, normal));
+	sunLightDiffuse = min(sunLightDiffuse, shadowValue);
 
 	float sunLightSpecular;
 	if (sunLightDiffuse > 0)
 		sunLightSpecular = max(0, dot(sunHalfVec, normal));
 	else
 		sunLightSpecular = 0;
-	sunLightSpecular = pow(sunLightSpecular, 2) * 0.33;
+	sunLightSpecular = pow(sunLightSpecular, 3) * 0.075;
 
-	float ambientAmount = 1.0;
-	vec3 baseColor = texture(tex_atlas, uv).rgb;
-	vec3 diffuse = baseColor * ((min(sunLightDiffuse, shadowValue)) * sun_color);
+
+	float ambientAmount = 1.0 - sunLightDiffuse * 0.75;
+	vec3 baseColor = textureLod(tex_atlas, uv, 0).rgb;
+	vec3 diffuse = baseColor * ((sunLightDiffuse) * sun_color);
 	vec3 ambient = baseColor * (ambientAmount * ambient_color);
 	vec3 specular = (shadowValue * sunLightSpecular) * sun_color;
 
@@ -89,8 +91,9 @@ void main()
 	// litColor = fragAo * (baseColor * 0.25 + baseColor * ambient_color * 0.75);
 	color_out = vec4(litColor, 1.0);
 	
+	// color_out = vec4(baseColor.rgb, 1.0);
 	/*
-	color_out = vec4(fragAo, fragAo, fragAo, color.a);
+	color_out = vec4(fragAo, fragAo, fragAo, 1.0);
 	if (actualClipZ <= shadow_cascade_far_clip_z[0])
 		color_out *= vec4(1, 0.8, 0.8, 1);
 	else if (actualClipZ <= shadow_cascade_far_clip_z[1])
@@ -106,4 +109,5 @@ void main()
 	// color_out = vec4(ambient_color, 1);
 
 	// color_out = vec4(uv, 0, 1);
+	// color_out = vec4(sun_color, 1);
 }

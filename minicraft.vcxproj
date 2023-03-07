@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -50,6 +50,8 @@
   <ItemGroup>
     <None Include="run\shaders\postprocess\chromatic_aberration\fs.glsl" />
     <None Include="run\shaders\postprocess\gamma\vs.glsl" />
+    <None Include="run\shaders\postprocess\screenspace_reflections\fs.glsl" />
+    <None Include="run\shaders\postprocess\screenspace_reflections\vs.glsl" />
     <None Include="run\shaders\postprocess\vignette\fs.glsl" />
     <None Include="run\shaders\world_opaque\fs.glsl" />
     <None Include="run\shaders\world_water\fs.glsl" />

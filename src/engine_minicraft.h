@@ -41,12 +41,19 @@ public:
 	float cascadeDepths[SHADOW_CASCADE_COUNT+1];
 	float cascadeFarClipZ[SHADOW_CASCADE_COUNT];
 
+	// SSR
+	YMat44 mainCameraV;
+	YMat44 mainCameraInvV;
+	YMat44 mainCameraP;
+	YMat44 mainCameraInvP;
+
 	// Post Processing
 	bool postProcessEnabled;
 	YFbo* screenFbos[2];
 	int currentScreenFboIndex;
 	GLuint ShaderVignettePP;
 	GLuint ShaderChromaticAberrationPP;
+	GLuint ShaderSSReflectionsPP;
 	GLuint ShaderGammaCorrectPP;
 	
 	GLuint ShaderCubeDebug;
@@ -84,6 +91,7 @@ public:
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
 		ShaderVignettePP = Renderer->createProgram("shaders/postprocess/vignette");
 		ShaderChromaticAberrationPP = Renderer->createProgram("shaders/postprocess/chromatic_aberration");
+		ShaderSSReflectionsPP = Renderer->createProgram("shaders/postprocess/screenspace_reflections");
 		ShaderGammaCorrectPP = Renderer->createProgram("shaders/postprocess/gamma");
 		skyRenderer.loadShaders();
 	}
@@ -114,9 +122,9 @@ public:
 
 		avatar = new MAvatar(Renderer->Camera, World);
 
-		screenFbos[0] = new YFbo(true);
+		screenFbos[0] = new YFbo(true, 3);
 		screenFbos[0]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
-		screenFbos[1] = new YFbo(true);
+		screenFbos[1] = new YFbo(true, 3);
 		screenFbos[1]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
 
 		atlasTex = YTexManager::getInstance()->loadTexture("textures/atlas.png");
@@ -347,7 +355,7 @@ public:
 
 	void renderObjects()
 	{
-		// Mise � jour des valeurs du soleil
+		// Mise a jour des valeurs du soleil
 		skyRenderer.updateSkyValues(timeOffset);
 
 		// Calcul des textures d'ombres
@@ -356,6 +364,16 @@ public:
 
 		if (postProcessEnabled)
 			screenFbos[0]->setAsOutFBO(true, true);
+
+		// Reinitialisation des buffers 2 et 3 (pour les normales du SSR)
+		setColorMaskEnabled(0, false);
+		setColorMaskEnabled(1, true);
+		setColorMaskEnabled(2, true);
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		setColorMaskEnabled(0, true);
+		setColorMaskEnabled(1, false);
+		setColorMaskEnabled(2, false);
 
 		// Rendu des axes
 		glUseProgram(0);
@@ -375,11 +393,25 @@ public:
 		drawIntersectedCubeSide();
 
 		if (postProcessEnabled)
+		{
+			// Recup des matrices pour les SSR
+			Renderer->updateMatricesFromOgl();
+			mainCameraV = Renderer->MatV;
+			mainCameraInvV = Renderer->MatIV;
+			mainCameraP = Renderer->MatP;
+			mainCameraInvP = Renderer->MatIP;
 			screenFbos[0]->setAsOutFBO(false, false);
+		}
 		
 		// Post Process
 		currentScreenFboIndex = 0;
 		postProcess();
+	}
+
+	void setColorMaskEnabled(int mask, bool enabled)
+	{
+		GLboolean glEnabled = enabled ? GL_TRUE : GL_FALSE;
+		glColorMaski(mask, glEnabled, glEnabled, glEnabled, glEnabled);
 	}
 
 	// Mostly adapted from : https://ogldev.org/www/tutorial49/tutorial49.html
@@ -531,9 +563,14 @@ public:
 	{
 		glPushMatrix();
 			// Opaque
+			setColorMaskEnabled(0, true);
+			setColorMaskEnabled(1, true);
+			setColorMaskEnabled(2, true);
 			loadWorldShader(ShaderWorldOpaque);
 			atlasTex->setAsShaderInput(ShaderWorldOpaque, GL_TEXTURE0, "tex_atlas");
 			World->render_world_vbo(false, false);
+			setColorMaskEnabled(1, false);
+			setColorMaskEnabled(2, false);
 			// Transparent
 			loadWorldShader(ShaderWorldWater);
 			Renderer->sendTimeToShader(DeltaTimeCumul, ShaderWorldWater);
@@ -670,6 +707,13 @@ public:
 
 		// Actual post processing
 		// Water Reflection
+		initPostProcess(ShaderSSReflectionsPP);
+		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraV, "v");
+		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraInvV, "inv_v");
+		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraP, "p");
+		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraInvP, "inv_p");
+		Renderer->sendScreenDimensionsToShader(ShaderSSReflectionsPP);
+		doPostProcess();
 		// God Rays
 		// FXAA
 		// Gamma Correction
@@ -714,13 +758,18 @@ public:
 			targetFbo->setAsOutFBO(true, false);
 		
 		fboWithScreenData->setColorAsShaderInput(0, GL_TEXTURE0, "TexColor");
-		fboWithScreenData->setColorAsShaderInput(1, GL_TEXTURE1, "TexNormal");
-		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE2, "TexDepth");
+		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE3, "TexDepth");
 		Renderer->sendNearFarToShader(YRenderer::CURRENT_SHADER);
 		Renderer->drawFullScreenQuad();
 
 		if (!isLast)
 			targetFbo->setAsOutFBO(false, false);
+	}
+
+	void sendMatrixToShader(GLuint shader, YMat44 &mat, const char *name)
+	{
+		GLuint location = glGetUniformLocation(shader, name);
+		glUniformMatrix4fv(location, 1, true, mat.Mat.t);
 	}
 
 	void drawWireQuad(YVec3f a, YVec3f b, YVec3f c, YVec3f d, YColor color)

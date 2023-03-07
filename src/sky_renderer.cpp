@@ -114,7 +114,7 @@ void SkyRenderer::updateSunAndSkyColors()
 	YColor sunAppearanceColor(1, 0.1f, 0, 1);
 	outerSunColor = sunAppearanceColor.interpolate(baseSunColor, sunAppearanceColorT);
 	innerSunColor = outerSunColor.interpolate(white, 0.25f);
-	lightingSunColor = outerSunColor.interpolate(white, 0.5f);
+	lightingSunColor = outerSunColor.interpolate(white, 0.75f);
 
 	// Ambient Color
 	YColor brightAmbientColor(0.6f, 0.65f, 0.7f, 1);

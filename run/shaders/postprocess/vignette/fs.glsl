@@ -3,12 +3,12 @@
 in vec2 uv;
 
 uniform sampler2D TexColor;
+uniform sampler2D TexNormal;
 
 uniform float intensity;
 uniform float radius;
 
-// Params :
-// Radius, Intensity
+out vec4 color_out;
 
 void main (void)
 {

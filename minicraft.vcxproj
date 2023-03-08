@@ -72,6 +72,8 @@
     <None Include="run\shaders\world_opaque\vs.glsl" />
     <None Include="run\shaders\postprocess\vignette\vs.glsl" />
     <None Include="run\shaders\postprocess\chromatic_aberration\vs.glsl" />
+    <None Include="run\shaders\world_water_simple\fs.glsl" />
+    <None Include="run\shaders\world_water_simple\vs.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

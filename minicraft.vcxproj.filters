@@ -69,6 +69,9 @@
     <Filter Include="shaders\postprocess\screenspace_reflections">
       <UniqueIdentifier>{87363554-33e0-4e3a-9eae-b4bdb426033c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\world_water_simple">
+      <UniqueIdentifier>{aae4cbe6-7e54-4087-abac-ffb6a650d32a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\engine_minicraft.h">
@@ -221,6 +224,12 @@
     </None>
     <None Include="run\shaders\postprocess\screenspace_reflections\vs.glsl">
       <Filter>shaders\postprocess\screenspace_reflections</Filter>
+    </None>
+    <None Include="run\shaders\world_water_simple\fs.glsl">
+      <Filter>shaders\world_water_simple</Filter>
+    </None>
+    <None Include="run\shaders\world_water_simple\vs.glsl">
+      <Filter>shaders\world_water_simple</Filter>
     </None>
   </ItemGroup>
 </Project>

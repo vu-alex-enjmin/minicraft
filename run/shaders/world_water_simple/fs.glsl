@@ -3,6 +3,7 @@
 //Variables en entree
 in vec4 worldPos;
 in vec3 normal;
+in vec4 color;
 in vec2 uv;
 in float ao;
 in float normalizedDistToCamera;
@@ -12,6 +13,7 @@ uniform mat4 m;
 uniform mat4 v;
 uniform mat4 p;
 
+uniform float elapsed;
 uniform vec3 camera_pos;
 uniform vec3 sun_color;
 uniform vec3 sun_light_color;
@@ -27,9 +29,36 @@ uniform float shadow_cascade_far[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far_clip_z[SHADOW_CASCADE_COUNT];
 uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
 
-uniform sampler2D tex_atlas;
-
 out vec4 color_out;
+
+float getNoise(vec2 pos)
+{
+	float time = elapsed;
+	vec2 source1 = vec2(-127.511, 153.421);
+	vec2 source2 = vec2(-90.456, -30.7411);
+	vec2 source3 = vec2(325.723, 80.342);
+	vec2 source4 = vec2(20.3477, -60.4215);
+	float noiseValue = 0;
+	noiseValue = sin(length(pos - source1) * 1.63 - 1.25 * time) * 0.4;
+	noiseValue += sin(length(pos - source2) * 1.19 - 1.02 * time) * 0.4;
+	noiseValue += sin(length(pos - source3) * 3.51 - 2.14 * time) * 0.2;
+	noiseValue += sin(length(pos - source4) * 2.71 - 3.57 * time) * 0.2;
+	noiseValue = noiseValue * 0.1 - 0.125;
+	return noiseValue;
+}
+
+vec3 getNoiseNormal(vec2 pos)
+{
+	float delta = 0.01;
+	float corner1Noise = getNoise(pos + vec2(-delta, -delta));
+	float corner2Noise = getNoise(pos + vec2(delta, -delta));
+	float corner3Noise = getNoise(pos + vec2(-delta, delta));
+
+	vec3 refVec1 = vec3(2*delta, corner2Noise - corner1Noise, 0); 
+	vec3 refVec2 = vec3(0, corner3Noise - corner1Noise, 2*delta);
+	
+	return normalize(cross(refVec2, refVec1)).xzy;
+}
 
 float sampleShadow(vec2 uv, float refDepth, int cascade)
 {
@@ -63,53 +92,33 @@ float getShadowValue()
 
 void main()
 {
+	vec3 noiseNormal = getNoiseNormal(worldPos.xy);
+
 	float shadowValue = getShadowValue();
+	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
+	// fragAo = 1.0;
 
 	vec3 viewVec = normalize(camera_pos - worldPos.xyz);
 	vec3 sunDir = normalize(sun_direction);
 	vec3 sunHalfVec = normalize(viewVec + sunDir); 
 
-	float sunLightDiffuse = max(0, dot(sunDir, normal));
-	sunLightDiffuse = min(sunLightDiffuse, shadowValue);
+	float sunLightDiffuse = max(0, dot(sunDir, noiseNormal));
 
 	float sunLightSpecular;
 	if (sunLightDiffuse > 0)
-		sunLightSpecular = max(0, dot(sunHalfVec, normal));
+		sunLightSpecular = max(0, dot(sunHalfVec, noiseNormal));
 	else
 		sunLightSpecular = 0;
-	sunLightSpecular = pow(sunLightSpecular, 3) * 0.075;
+	sunLightSpecular = pow(sunLightSpecular, 250);
 
 	float ambientAmount = 1.0 - sunLightDiffuse * 0.625;
 	ambientAmount *= 0.75;
 
-	vec3 baseColor = textureLod(tex_atlas, uv, 0).rgb;
-	vec3 diffuse = baseColor * ((sunLightDiffuse) * sun_light_color);
-	vec3 ambient = baseColor * (ambientAmount * ambient_color);
-	vec3 specular = (shadowValue * sunLightSpecular) * sun_color;
+	vec3 baseColor = color.xyz;
+	vec3 diffuse = baseColor * ((sunLightDiffuse * shadowValue) * sun_light_color) * fragAo;
+	vec3 ambient = baseColor * (ambientAmount * ambient_color) * fragAo;
+	vec4 specular = vec4((shadowValue * sunLightSpecular) * sun_color, shadowValue * sunLightSpecular);
 
-	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
-	// fragAo = 1.0;
-	vec3 litColor = (ambient + diffuse + specular) * fragAo;
-	// litColor = fragAo * (baseColor * 0.25 + baseColor * ambient_color * 0.75);
-	color_out = vec4(litColor, 1.0);
-	
-	// color_out = vec4(baseColor.rgb, 1.0);
-	/*
-	color_out = vec4(fragAo, fragAo, fragAo, 1.0);
-	if (actualClipZ <= shadow_cascade_far_clip_z[0])
-		color_out *= vec4(1, 0.8, 0.8, 1);
-	else if (actualClipZ <= shadow_cascade_far_clip_z[1])
-		color_out *= vec4(0.8, 1, 0.8, 1);
-	else if (actualClipZ <= shadow_cascade_far_clip_z[2])
-		color_out *= vec4(0.8, 0.8, 1, 1);
-	else if (actualClipZ <= shadow_cascade_far_clip_z[3])
-		color_out *= vec4(1, 1, 0.8, 1);
-	color_out.rgb *= shadowValue;
-	*/
-
-	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
-	// color_out = vec4(ambient_color, 1);
-
-	// color_out = vec4(uv, 0, 1);
-	// color_out = vec4(sun_color, 1);
+	vec4 waterColor = vec4(diffuse + ambient, color.a) + specular;
+	color_out = waterColor;
 }

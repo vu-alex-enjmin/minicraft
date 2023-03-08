@@ -16,6 +16,7 @@ uniform mat4 p;
 uniform float elapsed;
 uniform vec3 camera_pos;
 uniform vec3 sun_color;
+uniform vec3 sun_light_color;
 uniform vec3 ambient_color;
 uniform vec3 fog_color;
 uniform vec3 sun_direction;
@@ -28,9 +29,9 @@ uniform float shadow_cascade_far[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far_clip_z[SHADOW_CASCADE_COUNT];
 uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
 
-uniform sampler2D ColorTex;
-
-out vec4 color_out;
+layout(location=1) out vec4 normal_out;
+layout(location=2) out vec4 color_out;
+layout(location=3) out vec4 alpha_out;
 
 float getNoise(vec2 pos)
 {
@@ -110,16 +111,19 @@ void main()
 		sunLightSpecular = max(0, dot(sunHalfVec, noiseNormal));
 	else
 		sunLightSpecular = 0;
-	sunLightSpecular = pow(sunLightSpecular, 500);
+	sunLightSpecular = pow(sunLightSpecular, 250);
 
-	float ambientAmount = 1.0;
-	sunLightDiffuse = 1.0f;
+	float ambientAmount = 1.0 - sunLightDiffuse * 0.625;
+	ambientAmount *= 0.75;
+
 	vec3 baseColor = color.xyz;
-	vec3 diffuse = baseColor * ((sunLightDiffuse * shadowValue) * sun_color) * fragAo;
+	vec3 diffuse = baseColor * ((sunLightDiffuse * shadowValue) * sun_light_color) * fragAo;
 	vec3 ambient = baseColor * (ambientAmount * ambient_color) * fragAo;
 	vec4 specular = vec4((shadowValue * sunLightSpecular) * sun_color, shadowValue * sunLightSpecular);
 
-	color_out = vec4(diffuse + ambient, color.a) + specular;
+	vec4 waterColor = vec4(diffuse + ambient, color.a) + specular;
+	color_out = vec4(waterColor.rgb, 1.0);
+	alpha_out = vec4(waterColor.aaa, 1.0);
 
 	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
 
@@ -128,4 +132,6 @@ void main()
 	noiseValue = noiseValue * 0.5 + 0.5;
 	color_out = vec4(noiseValue, noiseValue, noiseValue, 1.0);
 	*/
+
+	normal_out = vec4(noiseNormal, 1.0);
 }

@@ -55,13 +55,22 @@ public:
 	GLuint ShaderChromaticAberrationPP;
 	GLuint ShaderSSReflectionsPP;
 	GLuint ShaderGammaCorrectPP;
+
+	// Post Processing parameters
+	GUISlider *vignetteIntensity;
+	GUISlider *vignetteRadius;
+	GUISlider *chromaticAberrationHorizontal;
+	GUISlider *chromaticAberrationVertical;
+	GUISlider *waterRefractionIntensity;
 	
+	// Main shaders
 	GLuint ShaderCubeDebug;
 	GLuint ShaderCube;
 	GLuint ShaderSun;
 	GLuint ShaderWorld;
 	GLuint ShaderWorldOpaque;
 	GLuint ShaderWorldWater;
+	GLuint ShaderWorldWaterSimple;
 	GLuint ShaderShadows;
 
 	int pointCount;
@@ -89,6 +98,7 @@ public:
 		ShaderShadows = Renderer->createProgram("shaders/shadows");
 		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
+		ShaderWorldWaterSimple = Renderer->createProgram("shaders/world_water_simple");
 		ShaderVignettePP = Renderer->createProgram("shaders/postprocess/vignette");
 		ShaderChromaticAberrationPP = Renderer->createProgram("shaders/postprocess/chromatic_aberration");
 		ShaderSSReflectionsPP = Renderer->createProgram("shaders/postprocess/screenspace_reflections");
@@ -122,9 +132,9 @@ public:
 
 		avatar = new MAvatar(Renderer->Camera, World);
 
-		screenFbos[0] = new YFbo(true, 3);
+		screenFbos[0] = new YFbo(true, 4);
 		screenFbos[0]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
-		screenFbos[1] = new YFbo(true, 3);
+		screenFbos[1] = new YFbo(true, 1);
 		screenFbos[1]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
 
 		atlasTex = YTexManager::getInstance()->loadTexture("textures/atlas.png");
@@ -132,24 +142,25 @@ public:
 		initUi();
 	}
 
-	GUISlider *vignetteIntensity;
-	GUISlider *vignetteRadius;
-	GUISlider *chromaticAberrationHorizontal;
-	GUISlider *chromaticAberrationVertical;
-
 	void initUi()
 	{
-		constexpr uint16 headerX = 12;
-		constexpr uint16 paramX = headerX + 16;
+		const uint16 spacing = 4;
+		const uint16 headerX = 12;
+		const uint16 paramX = headerX + 16;
 		uint16 y = 36;
 
 		addHeader("Vignette", headerX, y);
 		addParamSlider("Intensity", paramX, y, 0, 1, 1.0, &vignetteIntensity);
 		addParamSlider("Radius", paramX, y, 0.5, 3.0, 1.75, &vignetteRadius);
-		y += 4;
+		y += spacing;
+
 		addHeader("Chromatic Aberration", headerX, y);
 		addParamSlider("Horizontal", paramX, y, 0, 2.0, 1.0, &chromaticAberrationHorizontal);
 		addParamSlider("Vertical", paramX, y, 0, 2.0, 0.75, &chromaticAberrationVertical);
+		y += spacing;
+
+		addHeader("Water Refraction", headerX, y);
+		addParamSlider("Intensity", paramX, y, 0, 1.0, 0.2, &waterRefractionIntensity);
 	}
 
 	void addHeader(const std::string& labelName, uint16 x, uint16& y, GUILabel **addedLabel = nullptr)
@@ -367,13 +378,13 @@ public:
 
 		// Reinitialisation des buffers 2 et 3 (pour les normales du SSR)
 		setColorMaskEnabled(0, false);
-		setColorMaskEnabled(1, true);
-		setColorMaskEnabled(2, true);
+		setSecondaryMasksEnabled(true);
+
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT);
+
 		setColorMaskEnabled(0, true);
-		setColorMaskEnabled(1, false);
-		setColorMaskEnabled(2, false);
+		setSecondaryMasksEnabled(false);
 
 		// Rendu des axes
 		glUseProgram(0);
@@ -412,6 +423,14 @@ public:
 	{
 		GLboolean glEnabled = enabled ? GL_TRUE : GL_FALSE;
 		glColorMaski(mask, glEnabled, glEnabled, glEnabled, glEnabled);
+	}
+
+	void setSecondaryMasksEnabled(bool enabled)
+	{
+		for (int i = 1; i < screenFbos[0]->NbColorTex; i++)
+		{
+			setColorMaskEnabled(i, enabled);
+		}
 	}
 
 	// Mostly adapted from : https://ogldev.org/www/tutorial49/tutorial49.html
@@ -563,18 +582,19 @@ public:
 	{
 		glPushMatrix();
 			// Opaque
-			setColorMaskEnabled(0, true);
-			setColorMaskEnabled(1, true);
-			setColorMaskEnabled(2, true);
 			loadWorldShader(ShaderWorldOpaque);
 			atlasTex->setAsShaderInput(ShaderWorldOpaque, GL_TEXTURE0, "tex_atlas");
 			World->render_world_vbo(false, false);
-			setColorMaskEnabled(1, false);
-			setColorMaskEnabled(2, false);
+			
 			// Transparent
-			loadWorldShader(ShaderWorldWater);
-			Renderer->sendTimeToShader(DeltaTimeCumul, ShaderWorldWater);
+			setSecondaryMasksEnabled(true);
+
+			GLuint waterShader = postProcessEnabled ? ShaderWorldWater : ShaderWorldWaterSimple;
+			loadWorldShader(waterShader);
+			Renderer->sendTimeToShader(DeltaTimeCumul, waterShader);
 			World->render_world_vbo(false, true);
+
+			setSecondaryMasksEnabled(false);
 		glPopMatrix();
 	}
 
@@ -582,7 +602,9 @@ public:
 	{
 		glUseProgram(shader);
 		GLuint shader_sunColor = glGetUniformLocation(shader, "sun_color");
-		glUniform3f(shader_sunColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
+		glUniform3f(shader_sunColor, skyRenderer.outerSunColor.R, skyRenderer.outerSunColor.V, skyRenderer.outerSunColor.B);
+		GLuint shader_sunLightColor = glGetUniformLocation(shader, "sun_light_color");
+		glUniform3f(shader_sunLightColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
 		GLuint shader_fogColor = glGetUniformLocation(shader, "fog_color");
 		glUniform3f(shader_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
 		GLuint shader_ambientColor = glGetUniformLocation(shader, "ambient_color");
@@ -712,10 +734,10 @@ public:
 		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraInvV, "inv_v");
 		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraP, "p");
 		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraInvP, "inv_p");
+		sendSliderValueToShader(waterRefractionIntensity, "intensity", ShaderSSReflectionsPP);
 		Renderer->sendScreenDimensionsToShader(ShaderSSReflectionsPP);
 		doPostProcess();
 		// God Rays
-		// FXAA
 		// Gamma Correction
 		// doSinglePostProcess(ShaderGammaCorrectPP);
 		// Chromatic Aberration
@@ -758,7 +780,11 @@ public:
 			targetFbo->setAsOutFBO(true, false);
 		
 		fboWithScreenData->setColorAsShaderInput(0, GL_TEXTURE0, "TexColor");
-		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE3, "TexDepth");
+		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE1, "TexDepth");
+		screenFbos[0]->setColorAsShaderInput(1, GL_TEXTURE2, "TexNormal");
+		screenFbos[0]->setColorAsShaderInput(2, GL_TEXTURE3, "TexWaterColor");
+		screenFbos[0]->setColorAsShaderInput(3, GL_TEXTURE4, "TexWaterAlpha");
+		
 		Renderer->sendNearFarToShader(YRenderer::CURRENT_SHADER);
 		Renderer->drawFullScreenQuad();
 

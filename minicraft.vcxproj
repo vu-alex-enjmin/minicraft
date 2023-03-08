@@ -50,8 +50,8 @@
   <ItemGroup>
     <None Include="run\shaders\postprocess\chromatic_aberration\fs.glsl" />
     <None Include="run\shaders\postprocess\gamma\vs.glsl" />
-    <None Include="run\shaders\postprocess\screenspace_reflections\fs.glsl" />
-    <None Include="run\shaders\postprocess\screenspace_reflections\vs.glsl" />
+    <None Include="run\shaders\postprocess\water_effects\fs.glsl" />
+    <None Include="run\shaders\postprocess\water_effects\vs.glsl" />
     <None Include="run\shaders\postprocess\vignette\fs.glsl" />
     <None Include="run\shaders\world_opaque\fs.glsl" />
     <None Include="run\shaders\world_water\fs.glsl" />

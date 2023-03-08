@@ -43,7 +43,6 @@ public:
 
 	// SSR
 	YMat44 mainCameraV;
-	YMat44 mainCameraInvV;
 	YMat44 mainCameraP;
 	YMat44 mainCameraInvP;
 
@@ -53,7 +52,7 @@ public:
 	int currentScreenFboIndex;
 	GLuint ShaderVignettePP;
 	GLuint ShaderChromaticAberrationPP;
-	GLuint ShaderSSReflectionsPP;
+	GLuint ShaderWaterEffectsPP;
 	GLuint ShaderGammaCorrectPP;
 
 	// Post Processing parameters
@@ -62,6 +61,7 @@ public:
 	GUISlider *chromaticAberrationHorizontal;
 	GUISlider *chromaticAberrationVertical;
 	GUISlider *waterRefractionIntensity;
+	GUISlider *waterReflectionIntensity;
 	
 	// Main shaders
 	GLuint ShaderCubeDebug;
@@ -101,7 +101,7 @@ public:
 		ShaderWorldWaterSimple = Renderer->createProgram("shaders/world_water_simple");
 		ShaderVignettePP = Renderer->createProgram("shaders/postprocess/vignette");
 		ShaderChromaticAberrationPP = Renderer->createProgram("shaders/postprocess/chromatic_aberration");
-		ShaderSSReflectionsPP = Renderer->createProgram("shaders/postprocess/screenspace_reflections");
+		ShaderWaterEffectsPP = Renderer->createProgram("shaders/postprocess/water_effects");
 		ShaderGammaCorrectPP = Renderer->createProgram("shaders/postprocess/gamma");
 		skyRenderer.loadShaders();
 	}
@@ -132,7 +132,7 @@ public:
 
 		avatar = new MAvatar(Renderer->Camera, World);
 
-		screenFbos[0] = new YFbo(true, 4);
+		screenFbos[0] = new YFbo(true, 3);
 		screenFbos[0]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
 		screenFbos[1] = new YFbo(true, 1);
 		screenFbos[1]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
@@ -159,8 +159,9 @@ public:
 		addParamSlider("Vertical", paramX, y, 0, 2.0, 0.75, &chromaticAberrationVertical);
 		y += spacing;
 
-		addHeader("Water Refraction", headerX, y);
-		addParamSlider("Intensity", paramX, y, 0, 1.0, 0.2, &waterRefractionIntensity);
+		addHeader("Water Effects Intensity", headerX, y);
+		addParamSlider("Refraction", paramX, y, 0, 1.0, 0.25, &waterRefractionIntensity);
+		addParamSlider("Reflection", paramX, y, 0, 1.0, 0.5, &waterReflectionIntensity);
 	}
 
 	void addHeader(const std::string& labelName, uint16 x, uint16& y, GUILabel **addedLabel = nullptr)
@@ -376,13 +377,11 @@ public:
 		if (postProcessEnabled)
 			screenFbos[0]->setAsOutFBO(true, true);
 
-		// Reinitialisation des buffers 2 et 3 (pour les normales du SSR)
+
 		setColorMaskEnabled(0, false);
 		setSecondaryMasksEnabled(true);
-
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT);
-
 		setColorMaskEnabled(0, true);
 		setSecondaryMasksEnabled(false);
 
@@ -408,7 +407,6 @@ public:
 			// Recup des matrices pour les SSR
 			Renderer->updateMatricesFromOgl();
 			mainCameraV = Renderer->MatV;
-			mainCameraInvV = Renderer->MatIV;
 			mainCameraP = Renderer->MatP;
 			mainCameraInvP = Renderer->MatIP;
 			screenFbos[0]->setAsOutFBO(false, false);
@@ -728,14 +726,14 @@ public:
 		glDisable(GL_DEPTH_TEST);
 
 		// Actual post processing
-		// Water Reflection
-		initPostProcess(ShaderSSReflectionsPP);
-		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraV, "v");
-		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraInvV, "inv_v");
-		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraP, "p");
-		sendMatrixToShader(ShaderSSReflectionsPP, mainCameraInvP, "inv_p");
-		sendSliderValueToShader(waterRefractionIntensity, "intensity", ShaderSSReflectionsPP);
-		Renderer->sendScreenDimensionsToShader(ShaderSSReflectionsPP);
+		// Water Effects
+		initPostProcess(ShaderWaterEffectsPP);
+		sendMatrixToShader(ShaderWaterEffectsPP, mainCameraV, "v");
+		sendMatrixToShader(ShaderWaterEffectsPP, mainCameraP, "p");
+		sendMatrixToShader(ShaderWaterEffectsPP, mainCameraInvP, "inv_p");
+		sendSliderValueToShader(waterRefractionIntensity, "refraction_intensity", ShaderWaterEffectsPP);
+		sendSliderValueToShader(waterReflectionIntensity, "reflection_intensity", ShaderWaterEffectsPP);
+		Renderer->sendScreenDimensionsToShader(ShaderWaterEffectsPP);
 		doPostProcess();
 		// God Rays
 		// Gamma Correction

@@ -43,7 +43,7 @@ float getNoise(vec2 pos)
 	noiseValue += sin(length(pos - source2) * 1.19 - 1.02 * time) * 0.4;
 	noiseValue += sin(length(pos - source3) * 3.51 - 2.14 * time) * 0.2;
 	noiseValue += sin(length(pos - source4) * 2.71 - 3.57 * time) * 0.2;
-	noiseValue = noiseValue * 0.1 - 0.125;
+	noiseValue = noiseValue * 0.02 - 0.125;
 	return noiseValue;
 }
 

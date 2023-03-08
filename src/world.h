@@ -36,7 +36,7 @@ public :
 	
 	MWorld(AtlasUVMapper *uvMapper)
 	{
-		//On crée les chunks
+		//On crï¿½e les chunks
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
 				for(int z=0;z<MAT_HEIGHT;z++)
@@ -145,7 +145,7 @@ public :
 				for(int z=0;z<MAT_HEIGHT;z++)
 					Chunks[x][y][z]->reset();
 
-		//Générer ici le monde en modifiant les cubes
+		//Gï¿½nï¿½rer ici le monde en modifiant les cubes
 		//Utiliser getCubes()
 		srand(seed);
 		CustomPerlin noise;
@@ -677,7 +677,8 @@ public :
 		else
 		{
 			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendFunc(GL_ONE, GL_ZERO);
+			glBlendFunci(0, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			//Dessiner les chunks transparents
 			for (int x = 0; x < MAT_SIZE; x++)
 				for (int y = 0; y < MAT_SIZE; y++)
@@ -699,8 +700,8 @@ public :
 	}
 
 	/**
-	* Attention ce code n'est pas optimal, il est compréhensible. Il existe de nombreuses
-	* versions optimisées de ce calcul.
+	* Attention ce code n'est pas optimal, il est comprï¿½hensible. Il existe de nombreuses
+	* versions optimisï¿½es de ce calcul.
 	*/
 	inline bool intersecDroitePlan(const YVec3f & debSegment, const  YVec3f & finSegment,
 		const YVec3f & p1Plan, const YVec3f & p2Plan, const YVec3f & p3Plan,
@@ -711,8 +712,8 @@ public :
 	}
 
 	/**
-	* Attention ce code n'est pas optimal, il est compréhensible. Il existe de nombreuses
-	* versions optimisées de ce calcul. Il faut donner les points dans l'ordre (CW ou CCW)
+	* Attention ce code n'est pas optimal, il est comprï¿½hensible. Il existe de nombreuses
+	* versions optimisï¿½es de ce calcul. Il faut donner les points dans l'ordre (CW ou CCW)
 	*/
 	inline bool intersecDroiteCubeFace(const YVec3f & debSegment, const YVec3f & finSegment,
 		const YVec3f & p1, const YVec3f & p2, const YVec3f & p3, const  YVec3f & p4,
@@ -752,7 +753,7 @@ public :
 					if (getCube(x, y, z)->isSolid())
 					{
 						YVec3f toCube = YVec3f(x + 0.5, y + 0.5, z + 0.5) - adjustedOrigin;
-						if (toCube.dot(direction) >= 0.0f) // Ignore les cubes derrière le joueur
+						if (toCube.dot(direction) >= 0.0f) // Ignore les cubes derriï¿½re le joueur
 						{
 							currentTntersectionSide = lineUnitCubeIntersection(adjustedOrigin, direction, x, y, z, currentIntersection, currentIntersectionT, maxDist);
 							if (currentTntersectionSide)
@@ -835,7 +836,7 @@ public :
 	}
 
 	/**
-	* De meme cette fonction peut être grandement opitimisée, on a priviligié la clarté
+	* De meme cette fonction peut ï¿½tre grandement opitimisï¿½e, on a priviligiï¿½ la clartï¿½
 	*/
 	bool getRayCollisionWithCube(const YVec3f & debSegment, const YVec3f & finSegment,
 		int x, int y, int z,

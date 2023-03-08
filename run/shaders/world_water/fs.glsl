@@ -31,7 +31,6 @@ uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
 
 layout(location=1) out vec4 normal_out;
 layout(location=2) out vec4 color_out;
-layout(location=3) out vec4 alpha_out;
 
 float getNoise(vec2 pos)
 {
@@ -45,13 +44,14 @@ float getNoise(vec2 pos)
 	noiseValue += sin(length(pos - source2) * 1.19 - 1.02 * time) * 0.4;
 	noiseValue += sin(length(pos - source3) * 3.51 - 2.14 * time) * 0.2;
 	noiseValue += sin(length(pos - source4) * 2.71 - 3.57 * time) * 0.2;
-	noiseValue = noiseValue * 0.1 - 0.125;
+	noiseValue = noiseValue * 0.02 - 0.125;
+
 	return noiseValue;
 }
 
 vec3 getNoiseNormal(vec2 pos)
 {
-	float delta = 0.01;
+	float delta = 0.001;
 	float corner1Noise = getNoise(pos + vec2(-delta, -delta));
 	float corner2Noise = getNoise(pos + vec2(delta, -delta));
 	float corner3Noise = getNoise(pos + vec2(-delta, delta));
@@ -122,8 +122,7 @@ void main()
 	vec4 specular = vec4((shadowValue * sunLightSpecular) * sun_color, shadowValue * sunLightSpecular);
 
 	vec4 waterColor = vec4(diffuse + ambient, color.a) + specular;
-	color_out = vec4(waterColor.rgb, 1.0);
-	alpha_out = vec4(waterColor.aaa, 1.0);
+	color_out = waterColor.rgba;
 
 	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
 

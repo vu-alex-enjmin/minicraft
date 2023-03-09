@@ -461,8 +461,16 @@ public:
 		renderWorld();
 
 		// Calcul et rendu de la cible de picking
-		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
-		drawIntersectedCubeSide();
+		if (firstPerson)
+		{
+			intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
+			drawIntersectedCubeSide();
+		}
+		else
+		{
+			intersectionCubeSide = cubeSide::NONE;
+		}
+		
 
 		if (postProcessActuallyEnabled)
 		{

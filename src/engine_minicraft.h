@@ -16,6 +16,8 @@
 // taille de la shadowMap d'une seule cascade
 #define SHADOWMAP_SIZE 8192
 
+#define LABEL_WIDTH 120
+
 bool isPowerOfTwo(uint32 value)
 {
 	if (value == 0)
@@ -48,6 +50,7 @@ public:
 
 	// Post Processing
 	bool postProcessEnabled;
+	bool postProcessActuallyEnabled;
 	YFbo* screenFbos[2];
 	int currentScreenFboIndex;
 	GLuint ShaderVignettePP;
@@ -55,11 +58,15 @@ public:
 	GLuint ShaderWaterEffectsPP;
 	GLuint ShaderGammaCorrectPP;
 
-	// Post Processing parameters
+	// UI Parameters
+	bool cutoutShadowsEnabled;
+	bool vignetteEnabled;
 	GUISlider *vignetteIntensity;
 	GUISlider *vignetteRadius;
+	bool chromaticAberrationEnabled;
 	GUISlider *chromaticAberrationHorizontal;
 	GUISlider *chromaticAberrationVertical;
+	bool waterEffectsEnabled;
 	GUISlider *waterRefractionIntensity;
 	GUISlider *waterReflectionIntensity;
 	
@@ -72,6 +79,7 @@ public:
 	GLuint ShaderWorldWater;
 	GLuint ShaderWorldWaterSimple;
 	GLuint ShaderShadows;
+	GLuint ShaderShadowsCutout;
 
 	int pointCount;
 	int64_t timeOffset = 0;
@@ -96,6 +104,7 @@ public:
 		ShaderCube = Renderer->createProgram("shaders/cube");
 		ShaderWorld = Renderer->createProgram("shaders/world");
 		ShaderShadows = Renderer->createProgram("shaders/shadows");
+		ShaderShadowsCutout = Renderer->createProgram("shaders/shadows_cutout");
 		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
 		ShaderWorldWaterSimple = Renderer->createProgram("shaders/world_water_simple");
@@ -145,22 +154,42 @@ public:
 	void initUi()
 	{
 		const uint16 spacing = 4;
+		const uint16 secondarySpacing = 2;
 		const uint16 headerX = 12;
 		const uint16 paramX = headerX + 16;
 		uint16 y = 36;
+		
+		// Cutout Shadows
+		addHeader("Cutout Shadows", headerX, y);
+		cutoutShadowsEnabled = false;
+		addToggleButton(paramX, y, &cutoutShadowsEnabled);
+		y += spacing;
 
+		// Vignette
 		addHeader("Vignette", headerX, y);
+		vignetteEnabled = true;
+		addToggleButton(paramX, y, &vignetteEnabled);
+		y += secondarySpacing;
 		addParamSlider("Intensity", paramX, y, 0, 1, 1.0, &vignetteIntensity);
+		y += secondarySpacing;
 		addParamSlider("Radius", paramX, y, 0.5, 3.0, 1.75, &vignetteRadius);
 		y += spacing;
 
+		// Chromatic Aberration
 		addHeader("Chromatic Aberration", headerX, y);
+		chromaticAberrationEnabled = true;
+		addToggleButton(paramX, y, &chromaticAberrationEnabled);
 		addParamSlider("Horizontal", paramX, y, 0, 2.0, 1.0, &chromaticAberrationHorizontal);
+		y += secondarySpacing;
 		addParamSlider("Vertical", paramX, y, 0, 2.0, 0.75, &chromaticAberrationVertical);
 		y += spacing;
 
-		addHeader("Water Effects Intensity", headerX, y);
+		// Water Effects
+		addHeader("Water Effects (Intensity)", headerX, y);
+		waterEffectsEnabled = true;
+		addToggleButton(paramX, y, &waterEffectsEnabled);
 		addParamSlider("Refraction", paramX, y, 0, 1.0, 0.25, &waterRefractionIntensity);
+		y += secondarySpacing;
 		addParamSlider("Reflection", paramX, y, 0, 1.0, 0.5, &waterReflectionIntensity);
 	}
 
@@ -182,20 +211,50 @@ public:
 		label->Text = labelName;
 		label->X = x;
 		label->Y = y;
-		x += 120;
+		x += LABEL_WIDTH;
 		ScreenParams->addElement(label);
 		if (addedLabel != nullptr)
 			*addedLabel = label;
 		
 		GUISlider *slider = new GUISlider();
 		slider->setPos(x, y);
-		slider->setSize(120, 20);
+		slider->setSize(LABEL_WIDTH, 20);
 		slider->setMaxMin(max, min);
 		slider->setValue(startValue);
 		y += slider->Height + 2;
 		ScreenParams->addElement(slider);
 		if (addedSlider != nullptr)
 			*addedSlider = slider;
+	}
+
+	void addToggleButton(uint16 x, uint16 &y, bool *state, GUIBouton **addedButton = nullptr, GUILabel **addedLabel = nullptr)
+	{
+		GUILabel *label = new GUILabel();
+		label->Text = *state ? "State : ON" : "State : OFF";
+		label->X = x;
+		label->Y = y;
+		x += LABEL_WIDTH;
+		ScreenParams->addElement(label);
+		if (addedLabel != nullptr)
+			*addedLabel = label;
+
+		GUIBouton *button = new GUIBouton();
+		button->Titre = "Toggle";
+		button->X = x + (LABEL_WIDTH - button->Width) * 0.5;
+		button->Y = y;
+		button->setOnClick([=](GUIBouton* btn) { 
+			updateToggleButtonState(label, state);
+		});
+		y += button->Height;
+		ScreenParams->addElement(button);
+		if (addedButton != nullptr)
+			*addedButton = button;
+	}
+
+	static void updateToggleButtonState(GUILabel *label, bool *state)
+	{
+		*state = !*state;
+		label->Text = *state ? "State : ON" : "State : OFF";
 	}
 
 	void initShadows()
@@ -367,6 +426,8 @@ public:
 
 	void renderObjects()
 	{
+		postProcessActuallyEnabled = postProcessEnabled && (vignetteEnabled || chromaticAberrationEnabled || waterEffectsEnabled);
+
 		// Mise a jour des valeurs du soleil
 		skyRenderer.updateSkyValues(timeOffset);
 
@@ -374,16 +435,17 @@ public:
 		configureShadowCameras();
 		renderShadowMaps();
 
-		if (postProcessEnabled)
+		if (postProcessActuallyEnabled)
+		{
 			screenFbos[0]->setAsOutFBO(true, true);
 
-
-		setColorMaskEnabled(0, false);
-		setSecondaryMasksEnabled(true);
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-		setColorMaskEnabled(0, true);
-		setSecondaryMasksEnabled(false);
+			setColorMaskEnabled(0, false);
+			setSecondaryMasksEnabled(true);
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT);
+			setColorMaskEnabled(0, true);
+			setSecondaryMasksEnabled(false);
+		}
 
 		// Rendu des axes
 		glUseProgram(0);
@@ -402,7 +464,7 @@ public:
 		intersectionCubeSide = World->getRayCollision(Renderer->Camera->Position, Renderer->Camera->Direction, intersection, pickingRange, intersectionCubeX, intersectionCubeY, intersectionCubeZ);
 		drawIntersectedCubeSide();
 
-		if (postProcessEnabled)
+		if (postProcessActuallyEnabled)
 		{
 			// Recup des matrices pour les SSR
 			Renderer->updateMatricesFromOgl();
@@ -410,11 +472,11 @@ public:
 			mainCameraP = Renderer->MatP;
 			mainCameraInvP = Renderer->MatIP;
 			screenFbos[0]->setAsOutFBO(false, false);
+
+			// Post Process
+			currentScreenFboIndex = 0;
+			postProcess();
 		}
-		
-		// Post Process
-		currentScreenFboIndex = 0;
-		postProcess();
 	}
 
 	void setColorMaskEnabled(int mask, bool enabled)
@@ -522,7 +584,12 @@ public:
 		YCamera* baseCamera = Renderer->Camera;
 
 		glDrawBuffer(GL_NONE);
-		glUseProgram(ShaderShadows);
+
+		GLuint shader = cutoutShadowsEnabled ? ShaderShadowsCutout : ShaderShadows;
+		glUseProgram(shader);
+		if (cutoutShadowsEnabled)
+			atlasTex->setAsShaderInput(shader, GL_TEXTURE0, "tex_atlas");
+		
 		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 		{
 			shadowFbos[i]->setAsOutFBO(true, true);
@@ -531,7 +598,7 @@ public:
 
 			glViewport(0, 0, SHADOWMAP_SIZE, SHADOWMAP_SIZE);
 			Renderer->updateMatricesFromOgl();
-			Renderer->sendMatricesToShader(ShaderShadows);
+			Renderer->sendMatricesToShader(shader);
 			World->render_world_vbo(false, false);
 
 			shadowCamerasVP[i] = Renderer->MatP;
@@ -587,7 +654,7 @@ public:
 			// Transparent
 			setSecondaryMasksEnabled(true);
 
-			GLuint waterShader = postProcessEnabled ? ShaderWorldWater : ShaderWorldWaterSimple;
+			GLuint waterShader = (postProcessEnabled && waterEffectsEnabled) ? ShaderWorldWater : ShaderWorldWaterSimple;
 			loadWorldShader(waterShader);
 			Renderer->sendTimeToShader(DeltaTimeCumul, waterShader);
 			World->render_world_vbo(false, true);
@@ -717,37 +784,44 @@ public:
 
 	void postProcess()
 	{
-		if (!postProcessEnabled)
-			return;
-		
 		// Init
 		glDepthMask(GL_FALSE);
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 
+		int postProcessingCount = waterEffectsEnabled + chromaticAberrationEnabled + vignetteEnabled;
+
 		// Actual post processing
 		// Water Effects
-		initPostProcess(ShaderWaterEffectsPP);
-		sendMatrixToShader(ShaderWaterEffectsPP, mainCameraV, "v");
-		sendMatrixToShader(ShaderWaterEffectsPP, mainCameraP, "p");
-		sendMatrixToShader(ShaderWaterEffectsPP, mainCameraInvP, "inv_p");
-		sendSliderValueToShader(waterRefractionIntensity, "refraction_intensity", ShaderWaterEffectsPP);
-		sendSliderValueToShader(waterReflectionIntensity, "reflection_intensity", ShaderWaterEffectsPP);
-		Renderer->sendScreenDimensionsToShader(ShaderWaterEffectsPP);
-		doPostProcess();
-		// God Rays
+		if (waterEffectsEnabled)
+		{
+			initPostProcess(ShaderWaterEffectsPP);
+			sendMatrixToShader(ShaderWaterEffectsPP, mainCameraV, "v");
+			sendMatrixToShader(ShaderWaterEffectsPP, mainCameraP, "p");
+			sendMatrixToShader(ShaderWaterEffectsPP, mainCameraInvP, "inv_p");
+			sendSliderValueToShader(waterRefractionIntensity, "refraction_intensity", ShaderWaterEffectsPP);
+			sendSliderValueToShader(waterReflectionIntensity, "reflection_intensity", ShaderWaterEffectsPP);
+			Renderer->sendScreenDimensionsToShader(ShaderWaterEffectsPP);
+			doPostProcess(--postProcessingCount == 0);
+		}
 		// Gamma Correction
 		// doSinglePostProcess(ShaderGammaCorrectPP);
 		// Chromatic Aberration
-		initPostProcess(ShaderChromaticAberrationPP);
-		sendSliderValueToShader(chromaticAberrationHorizontal, "horizontal_intensity", ShaderChromaticAberrationPP);
-		sendSliderValueToShader(chromaticAberrationVertical, "vertical_intensity", ShaderChromaticAberrationPP);
-		doPostProcess();
+		if (chromaticAberrationEnabled)
+		{
+			initPostProcess(ShaderChromaticAberrationPP);
+			sendSliderValueToShader(chromaticAberrationHorizontal, "horizontal_intensity", ShaderChromaticAberrationPP);
+			sendSliderValueToShader(chromaticAberrationVertical, "vertical_intensity", ShaderChromaticAberrationPP);
+			doPostProcess(--postProcessingCount == 0);
+		}
 		// Vignette
-		initPostProcess(ShaderVignettePP);
-		sendSliderValueToShader(vignetteIntensity, "intensity", ShaderVignettePP);
-		sendSliderValueToShader(vignetteRadius, "radius", ShaderVignettePP);
-		doPostProcess(true);
+		if (vignetteEnabled)
+		{
+			initPostProcess(ShaderVignettePP);
+			sendSliderValueToShader(vignetteIntensity, "intensity", ShaderVignettePP);
+			sendSliderValueToShader(vignetteRadius, "radius", ShaderVignettePP);
+			doPostProcess(--postProcessingCount == 0);
+		}
 
 		// Cleanup
 		glEnable(GL_DEPTH_TEST);
@@ -922,7 +996,7 @@ public:
 				}
 				else if (button == GLUT_RIGHT_BUTTON)
 				{
-					World->placeCubeOnCubeSide(intersectionCubeX, intersectionCubeY, intersectionCubeZ, intersectionCubeSide, MCube::CUBE_LAINE_01);
+					World->placeCubeOnCubeSide(intersectionCubeX, intersectionCubeY, intersectionCubeZ, intersectionCubeSide, MCube::CUBE_BRANCHES);
 				}
 			}
 		}

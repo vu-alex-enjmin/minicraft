@@ -27,7 +27,7 @@ void AtlasUVMapper::getOffsetForCube(const MCube::MCubeType type, const cubeSide
 			SET_OFFSET(0, 1);
 		case MCube::CUBE_SABLE_01:
 			SET_OFFSET(1, 1);
-		case MCube::CUBE_LAINE_01:
+		case MCube::CUBE_BRANCHES:
 			SET_OFFSET(2, 1);
 	}
 

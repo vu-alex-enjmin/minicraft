@@ -63,6 +63,12 @@ float getShadowValue()
 
 void main()
 {
+	vec4 texColor = textureLod(tex_atlas, uv, 0);
+	if (texColor.a <= 1e-6)
+	{
+		discard;
+	}
+
 	float shadowValue = getShadowValue();
 
 	vec3 viewVec = normalize(camera_pos - worldPos.xyz);
@@ -82,7 +88,7 @@ void main()
 	float ambientAmount = 1.0 - sunLightDiffuse * 0.625;
 	ambientAmount *= 0.75;
 
-	vec3 baseColor = textureLod(tex_atlas, uv, 0).rgb;
+	vec3 baseColor = texColor.rgb;
 	vec3 diffuse = baseColor * ((sunLightDiffuse) * sun_light_color);
 	vec3 ambient = baseColor * (ambientAmount * ambient_color);
 	vec3 specular = (shadowValue * sunLightSpecular) * sun_color;

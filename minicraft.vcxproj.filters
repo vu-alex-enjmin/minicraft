@@ -45,9 +45,6 @@
     <Filter Include="Fichiers sources\noise">
       <UniqueIdentifier>{0f24b923-bef6-4832-99f5-c7e7fc71d33b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="shaders\shadow">
-      <UniqueIdentifier>{5428d052-f90c-4121-879d-52a2ed85b2e9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="shaders\world_opaque">
       <UniqueIdentifier>{079480da-9943-4e2f-9597-e7dff42e95be}</UniqueIdentifier>
     </Filter>
@@ -71,6 +68,12 @@
     </Filter>
     <Filter Include="shaders\postprocess\water_effects">
       <UniqueIdentifier>{87363554-33e0-4e3a-9eae-b4bdb426033c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\shadows_cutout">
+      <UniqueIdentifier>{439ed186-6958-49e2-a7f7-50972eafd394}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders\shadows">
+      <UniqueIdentifier>{5428d052-f90c-4121-879d-52a2ed85b2e9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -184,10 +187,10 @@
       <Filter>shaders\cube_debug</Filter>
     </None>
     <None Include="run\shaders\shadows\fs.glsl">
-      <Filter>shaders\shadow</Filter>
+      <Filter>shaders\shadows</Filter>
     </None>
     <None Include="run\shaders\shadows\vs.glsl">
-      <Filter>shaders\shadow</Filter>
+      <Filter>shaders\shadows</Filter>
     </None>
     <None Include="run\shaders\world_water\fs.glsl">
       <Filter>shaders\world_water</Filter>
@@ -230,6 +233,12 @@
     </None>
     <None Include="run\shaders\world_water_simple\vs.glsl">
       <Filter>shaders\world_water_simple</Filter>
+    </None>
+    <None Include="run\shaders\shadows_cutout\fs.glsl">
+      <Filter>shaders\shadows_cutout</Filter>
+    </None>
+    <None Include="run\shaders\shadows_cutout\vs.glsl">
+      <Filter>shaders\shadows_cutout</Filter>
     </None>
   </ItemGroup>
 </Project>

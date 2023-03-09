@@ -755,7 +755,7 @@ public:
 		glDepthMask(GL_TRUE);
 	}
 
-	void sendSliderValueToShader(GUISlider *slider, const char* paramName, GLuint shader)
+	void sendSliderValueToShader(GUISlider *slider, const char *paramName, GLuint shader)
 	{
 		GLuint location = glGetUniformLocation(shader, paramName);
 		glUniform1f(location, slider->Value);

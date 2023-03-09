@@ -6,7 +6,7 @@
 #include "atlas_uv_mapper.h"
 
 #define FOUR_CORNERS(a,b,c,d) corners[a],corners[d],corners[c],corners[b]
-// Système d'occlusion ambiante tirée de cet article : https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
+// Systï¿½me d'occlusion ambiante tirï¿½e de cet article : https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
 #define EIGHT_AO_NEIGHBOURS(a,b,c,d,e,f,g,h) aoNeighbours[a], aoNeighbours[b], aoNeighbours[c], aoNeighbours[d], aoNeighbours[e], aoNeighbours[f], aoNeighbours[g], aoNeighbours[h]
 #define AO_VALUE(side1,side2,corner) ((side1 && side2) ? 0 : (3 - (side1 + side2 + corner)))
 #define AO_FLOAT(aoInt) (aoInt/3.0f)
@@ -52,7 +52,6 @@ class MChunk
 			//Compter les sommets
 			int opaqueVertexCount = 0;
 			int transparentVertexCount = 0;
-			MCube* neighbours[6];
 			for (int x = 0; x < CHUNK_SIZE; x++)
 			{
 				for (int y = 0; y < CHUNK_SIZE; y++)
@@ -65,30 +64,16 @@ class MChunk
 						MCube::MCubeType cubeType = _Cubes[x][y][z].getType();
 						if (cubeType != MCube::CUBE_AIR)
 						{
-							get_surrounding_cubes(x, y, z, &neighbours[0], &neighbours[1], &neighbours[2], &neighbours[3], &neighbours[4], &neighbours[5]);
-
 							if (typeIsTransparent(cubeType))
-							{
-								for (int i = 0; i < 6; i++)
-								{
-									if (neighbours[i] == NULL || neighbours[i]->getType() == MCube::CUBE_AIR)
-										transparentVertexCount += 6;
-								}
-							}
+								transparentVertexCount += countCubeVerticesInVbo(x, y, z, cubeType);
 							else
-							{
-								for (int i = 0; i < 6; i++)
-								{
-									if (neighbours[i] == NULL || neighbours[i]->getType() == MCube::CUBE_AIR || typeIsTransparent(neighbours[i]->getType()))
-										opaqueVertexCount += 6;
-								}
-							}
+								opaqueVertexCount += countCubeVerticesInVbo(x, y, z, cubeType);
 						}
 					}
 				}
 			}
 
-			//Créer les VBO
+			//Creer les VBO
 			VboOpaque = new YVbo(5, opaqueVertexCount, YVbo::PACK_BY_ELEMENT_TYPE);
 			VboOpaque->setElementDescription(0, YVbo::Element(3)); //Sommet
 			VboOpaque->setElementDescription(1, YVbo::Element(3)); //Normale
@@ -120,10 +105,11 @@ class MChunk
 						MCube::MCubeType cubeType = _Cubes[x][y][z].getType();
 						if (cubeType != MCube::CUBE_AIR)
 						{
+							bool cubeIsOpaque = _Cubes[x][y][z].isOpaque();
 							if (typeIsTransparent(cubeType))
-								transparentVertexIndex += addCubeToVbo(VboTransparent, transparentVertexIndex, x, y, z, true);
+								transparentVertexIndex += addCubeToVbo(VboTransparent, transparentVertexIndex, x, y, z, cubeType, cubeIsOpaque);
 							else
-								opaqueVertexIndex += addCubeToVbo(VboOpaque, opaqueVertexIndex, x, y, z, false);
+								opaqueVertexIndex += addCubeToVbo(VboOpaque, opaqueVertexIndex, x, y, z, cubeType, cubeIsOpaque);
 						}
 					}
 				}
@@ -133,7 +119,7 @@ class MChunk
 			VboOpaque->createVboGpu();
 			VboTransparent->createVboGpu();
 
-			//On relache la mémoire CPU
+			//On relache la memoire CPU
 			VboOpaque->deleteVboCpu();
 			VboTransparent->deleteVboCpu();
 		}
@@ -250,9 +236,8 @@ class MChunk
 			return 6;
 		}
 
-		int addCubeToVbo(YVbo* vbo, int iVertice, int x, int y, int z, bool currentTypeIsTransparent) 
+		int addCubeToVbo(YVbo* vbo, int iVertice, int x, int y, int z, MCube::MCubeType type, bool isOpaque)
 		{
-			MCube &cube = _Cubes[x][y][z];
 			YVec3f corners[8]
 			{
 				// BOTTOM
@@ -268,16 +253,23 @@ class MChunk
 			};
 
 			bool aoNeighbours[8 + 4 + 8];
-			fillAoNeighbours(x, y, z, aoNeighbours);
+			if (isOpaque)
+			{
+				fillAoNeighbours(x, y, z, aoNeighbours);
+			}
+			else
+			{
+				for (int i = 0; i < (8+4+8); i++)
+					aoNeighbours[i] = false;
+			}
 
 			int vertexCount = 0;
-			MCube::MCubeType type = cube.getType();
 
 			MCube *xPrev, *xNext, *yPrev, *yNext, *zPrev, *zNext;
 			get_surrounding_cubes(x, y, z, &xPrev, &xNext, &yPrev, &yNext, &zPrev, &zNext);
 			
 			// LEFT (-X)
-			if (faceShouldBeVisible(currentTypeIsTransparent, xPrev))
+			if (faceShouldBeVisible(type, xPrev))
 			{
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
@@ -288,7 +280,7 @@ class MChunk
 			}
 			
 			// RIGHT (+X)
-			if (faceShouldBeVisible(currentTypeIsTransparent, xNext))
+			if (faceShouldBeVisible(type, xNext))
 			{
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
@@ -299,7 +291,7 @@ class MChunk
 			}
 			
 			// BACK (-Y)
-			if (faceShouldBeVisible(currentTypeIsTransparent, yPrev))
+			if (faceShouldBeVisible(type, yPrev))
 			{
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
@@ -310,7 +302,7 @@ class MChunk
 			}
 
 			// FRONT (+Y)
-			if (faceShouldBeVisible(currentTypeIsTransparent, yNext))
+			if (faceShouldBeVisible(type, yNext))
 			{
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
@@ -321,7 +313,7 @@ class MChunk
 			}
 
 			// BOTTOM (-Z)
-			if (faceShouldBeVisible(currentTypeIsTransparent, zPrev))
+			if (faceShouldBeVisible(type, zPrev))
 			{
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
@@ -332,7 +324,7 @@ class MChunk
 			}
 
 			// UP (+Z)
-			if (faceShouldBeVisible(currentTypeIsTransparent, zNext))
+			if (faceShouldBeVisible(type, zNext))
 			{
 				vertexCount += addQuadToVbo(
 					vbo, iVertice + vertexCount,
@@ -345,16 +337,42 @@ class MChunk
 			return vertexCount;
 		}
 
-		bool faceShouldBeVisible(bool currentTypeIsTransparent, MCube* neighbour)
+		int countCubeVerticesInVbo(int x, int y, int z, MCube::MCubeType type)
 		{
-			if (currentTypeIsTransparent)
+			int vertexCount = 0;
+
+			MCube* neighbours[6];
+			get_surrounding_cubes(
+				x, y, z, 
+				&neighbours[0], 
+				&neighbours[1], 
+				&neighbours[2], 
+				&neighbours[3], 
+				&neighbours[4], 
+				&neighbours[5]
+			);
+
+			for (int i = 0; i < 6; i++)
 			{
-				return (neighbour == NULL || neighbour->getType() == MCube::CUBE_AIR);
+				if (faceShouldBeVisible(type, neighbours[i]))
+				{
+					vertexCount += 6;
+				}
 			}
-			else
+
+			return vertexCount;
+		}
+
+		bool faceShouldBeVisible(MCube::MCubeType type, MCube *neighbour)
+		{
+			// Eau
+			if (type == MCube::CUBE_EAU)
 			{
-				return (neighbour == NULL || neighbour->getType() == MCube::CUBE_AIR || typeIsTransparent(neighbour->getType()));
+				return (neighbour == NULL) || (neighbour->getType() != MCube::CUBE_EAU);
 			}
+
+			// Autre
+			return (neighbour == NULL) || !neighbour->isOpaque();
 		}
 
 		bool typeIsTransparent(MCube::MCubeType type)
@@ -363,7 +381,8 @@ class MChunk
 		}
 
 		//Permet de compter les triangles ou des les ajouter aux VBO
-		void foreachVisibleTriangle(bool countOnly, int * nbVertOpaque, int * nbVertTransp, YVbo * VboOpaque, YVbo * VboTrasparent) {
+		void foreachVisibleTriangle(bool countOnly, int * nbVertOpaque, int * nbVertTransp, YVbo * VboOpaque, YVbo * VboTrasparent) 
+		{
 
 
 		}
@@ -445,7 +464,7 @@ class MChunk
 		}
 
 		/**
-		  * On verifie si le cube peut être vu
+		  * On verifie si le cube peut ï¿½tre vu
 		  */
 		bool test_hidden(int x, int y, int z)
 		{
@@ -514,7 +533,7 @@ class MChunk
 		}
 
 		// Remplit les informations sur les voisins pour l'occlusion ambiante
-		void fillAoNeighbours(const int x, const int y, const int z, bool* aoNeighbours)
+		void fillAoNeighbours(const int x, const int y, const int z, bool *aoNeighbours)
 		{
 			// Couche 1 (3x3-1) : la couche 3x3 au dessus, moins le centre
 			aoNeighbours[0] = cubeExistsAndIsOccluding(x - 1, y - 1, z - 1);

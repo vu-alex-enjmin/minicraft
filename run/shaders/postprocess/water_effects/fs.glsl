@@ -118,9 +118,12 @@ void main (void)
 	{
 		color = texture(TexColor , uv);
 	}
+
+	vec4 fogColor = texture(TexFogColor, uv);
 	
 	// Water color
 	vec4 waterColor = texture(TexWaterColor, uv);
+	waterColor.rgb = mix(waterColor.rgb, fogColor.rgb, fogColor.a);
 	float waterAlpha = waterColor.a;
 	color_out = vec4(color.rgb * (1-waterAlpha) + waterColor.rgb * waterAlpha, 1.0);
 
@@ -164,7 +167,4 @@ void main (void)
 			}
 		}
 	}
-
-	vec4 fogColor = texture(TexFogColor, uv);
-	color_out.rgb = mix(color_out.rgb, fogColor.rgb, fogColor.a);
 }

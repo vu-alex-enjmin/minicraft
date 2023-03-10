@@ -59,13 +59,21 @@ public:
 	GLuint ShaderGammaCorrectPP;
 
 	// UI Parameters
+	//  Cutout Shadows
 	bool cutoutShadowsEnabled;
+	//  Fog
+	bool fogEnabled;
+	GUISlider *fogDensity;
+	GUISlider *fogMinDistance;
+	//  Vignette
 	bool vignetteEnabled;
 	GUISlider *vignetteIntensity;
 	GUISlider *vignetteRadius;
+	//  Chromatic Aberration
 	bool chromaticAberrationEnabled;
 	GUISlider *chromaticAberrationHorizontal;
 	GUISlider *chromaticAberrationVertical;
+	//  Water Effects
 	bool waterEffectsEnabled;
 	GUISlider *waterRefractionIntensity;
 	GUISlider *waterReflectionIntensity;
@@ -141,7 +149,7 @@ public:
 
 		avatar = new MAvatar(Renderer->Camera, World);
 
-		screenFbos[0] = new YFbo(true, 3);
+		screenFbos[0] = new YFbo(true, 4);
 		screenFbos[0]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
 		screenFbos[1] = new YFbo(true, 1);
 		screenFbos[1]->init(Renderer->ScreenWidth, Renderer->ScreenHeight);
@@ -163,6 +171,16 @@ public:
 		addHeader("Cutout Shadows", headerX, y);
 		cutoutShadowsEnabled = false;
 		addToggleButton(paramX, y, &cutoutShadowsEnabled);
+		y += spacing;
+
+		// Fog
+		addHeader("Fog", headerX, y);
+		fogEnabled = true;
+		addToggleButton(paramX, y, &fogEnabled);
+		y += secondarySpacing;
+		addParamSlider("Density", paramX, y, 0, 0.5, 0.0125, &fogDensity);
+		y += secondarySpacing;
+		addParamSlider("Min Distance", paramX, y, 0, 64.0, 16.0, &fogMinDistance);
 		y += spacing;
 
 		// Vignette
@@ -695,11 +713,16 @@ public:
 		GLuint shader_sunDirection = glGetUniformLocation(shader, "sun_direction");
 		glUniform3f(shader_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
 
+		// Fog data
+		GLuint shader_fogColor = glGetUniformLocation(shader, "fog_color");
+		glUniform3f(shader_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
+		GLuint shader_fogDensity = glGetUniformLocation(shader, "fog_density");
+		glUniform1f(shader_fogDensity, fogDensity->Value * fogEnabled);
+		sendSliderValueToShader(fogMinDistance, "fog_min_distance", shader);
+
 		// Other data
 		GLuint shader_ambientColor = glGetUniformLocation(shader, "ambient_color");
 		glUniform3f(shader_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
-		GLuint shader_fogColor = glGetUniformLocation(shader, "fog_color");
-		glUniform3f(shader_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
 		YVec3f cameraPos = Renderer->Camera->Position;
 		GLuint shader_cameraPos = glGetUniformLocation(shader, "camera_pos");
 		glUniform3f(shader_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
@@ -866,7 +889,7 @@ public:
 		screenFbos[0]->setDepthAsShaderInput(GL_TEXTURE1, "TexDepth");
 		screenFbos[0]->setColorAsShaderInput(1, GL_TEXTURE2, "TexNormal");
 		screenFbos[0]->setColorAsShaderInput(2, GL_TEXTURE3, "TexWaterColor");
-		screenFbos[0]->setColorAsShaderInput(3, GL_TEXTURE4, "TexWaterAlpha");
+		screenFbos[0]->setColorAsShaderInput(3, GL_TEXTURE4, "TexFogColor");
 		
 		Renderer->sendNearFarToShader(YRenderer::CURRENT_SHADER);
 		Renderer->drawFullScreenQuad();

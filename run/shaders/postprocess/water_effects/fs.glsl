@@ -5,7 +5,7 @@ in vec2 uv;
 uniform sampler2D TexColor;
 uniform sampler2D TexNormal;
 uniform sampler2D TexWaterColor;
-uniform sampler2D TexWaterAlpha;
+uniform sampler2D TexFogColor;
 uniform sampler2D TexDepth;
 
 uniform vec2 near_far;
@@ -164,4 +164,7 @@ void main (void)
 			}
 		}
 	}
+
+	vec4 fogColor = texture(TexFogColor, uv);
+	color_out.rgb = mix(color_out.rgb, fogColor.rgb, fogColor.a);
 }

@@ -8,6 +8,7 @@ in vec2 uv;
 in float ao;
 in float normalizedDistToCamera;
 in float actualClipZ;
+in float fogFactor;
 
 uniform mat4 m;
 uniform mat4 v;
@@ -121,4 +122,5 @@ void main()
 
 	vec4 waterColor = vec4(diffuse + ambient, color.a) + specular;
 	color_out = waterColor;
+	color_out = vec4(mix(color_out.rgb, fog_color, fogFactor), color_out.a);
 }

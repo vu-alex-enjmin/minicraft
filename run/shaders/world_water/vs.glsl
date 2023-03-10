@@ -8,6 +8,9 @@ uniform mat4 mvp;
 uniform mat4 nmat;
 uniform vec3 camera_pos;
 
+uniform float fog_density;
+uniform float fog_min_distance;
+
 layout(location=0) in vec3 vs_position_in;
 layout(location=1) in vec3 vs_normal_in;
 layout(location=2) in vec2 vs_uv_in;
@@ -20,7 +23,7 @@ out vec3 normal;
 out vec4 color;
 out vec2 uv;
 out float ao;
-out float normalizedDistToCamera;
+out float fogFactor;
 out float actualClipZ;
 
 #define WORLD_SIZE (64.0 * 4.0)
@@ -57,6 +60,7 @@ void main()
 
 	color = vec4(0.1, 0.5, 0.7, 0.45);
 
-	normalizedDistToCamera = clamp(length(worldPos.xyz - camera_pos) / (WORLD_SIZE * 0.5), 0.0, 1.0);
-	normalizedDistToCamera = normalizedDistToCamera * normalizedDistToCamera;
+	fogFactor = max(0, length(worldPos.xyz - camera_pos) - fog_min_distance);
+	fogFactor = exp2(-fogFactor * fog_density * fogFactor * fog_density);
+	fogFactor = 1 - fogFactor;
 }

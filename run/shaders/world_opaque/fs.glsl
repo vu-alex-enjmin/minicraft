@@ -5,7 +5,7 @@ in vec4 worldPos;
 in vec3 normal;
 in vec2 uv;
 in float ao;
-in float normalizedDistToCamera;
+in float fogFactor;
 in float actualClipZ;
 
 uniform mat4 m;
@@ -20,6 +20,7 @@ uniform vec3 sun_direction;
 
 uniform vec3 ambient_color;
 uniform vec3 fog_color;
+uniform float fog_density;
 
 #define SHADOW_CASCADE_COUNT 4
 uniform sampler2DShadow shadow_map[SHADOW_CASCADE_COUNT];
@@ -114,9 +115,5 @@ void main()
 	color_out.rgb *= shadowValue;
 	*/
 
-	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
-	// color_out = vec4(ambient_color, 1);
-
-	// color_out = vec4(uv, 0, 1);
-	// color_out = vec4(sun_color, 1);
+	color_out = vec4(mix(color_out.rgb, fog_color, fogFactor), color_out.a);
 }

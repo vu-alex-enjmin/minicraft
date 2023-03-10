@@ -8,6 +8,7 @@ in vec2 uv;
 in float ao;
 in float normalizedDistToCamera;
 in float actualClipZ;
+in float fogFactor;
 
 uniform mat4 m;
 uniform mat4 v;
@@ -32,6 +33,7 @@ uniform float inv_shadowmap_size;
 
 layout(location=1) out vec4 normal_out;
 layout(location=2) out vec4 color_out;
+layout(location=3) out vec4 fog_color_out;
 
 float getNoise(vec2 pos)
 {
@@ -123,9 +125,6 @@ void main()
 	vec4 specular = vec4((shadowValue * sunLightSpecular) * sun_color, shadowValue * sunLightSpecular);
 
 	vec4 waterColor = vec4(diffuse + ambient, color.a) + specular;
-	color_out = waterColor.rgba;
-
-	// color_out = vec4(mix(litColor, fog_color, normalizedDistToCamera), color.a);
 
 	/*
 	float noiseValue = getNoise(worldPos.xy);
@@ -133,5 +132,7 @@ void main()
 	color_out = vec4(noiseValue, noiseValue, noiseValue, 1.0);
 	*/
 
+	color_out = waterColor;
 	normal_out = vec4(noiseNormal, 1.0);
+	fog_color_out = vec4(fog_color, fogFactor);
 }

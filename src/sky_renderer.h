@@ -13,6 +13,7 @@ private:
 
 	void updateSunProgressT(const uint64_t timeOffsetMillis);
 	void updateSunAndSkyColors();
+	void drawSun(YVbo* sunVbo, const float angle, const float scale, const float distance, const YColor &outerColor, const YColor &innerColor);
 public:
 	GLuint ShaderSun = 0;
 
@@ -24,6 +25,8 @@ public:
 	YColor skyColor;
 	YColor outerSunColor;
 	YColor innerSunColor;
+	YColor outerMoonColor;
+	YColor innerMoonColor;
 	YColor ambientColor;
 	YColor lightingSunColor;
 

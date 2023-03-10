@@ -28,7 +28,6 @@ void SkyRenderer::updateSkyValues(const uint64_t timeOffsetMillis)
 	float sunSetAngle = -90.0f;
 	sunAngle = lerp(sunRiseAngle, sunSetAngle, sunProgressT);
 	sunDirection = YVec3f(0, 0, 1).rotate(YVec3f(-1, 0.5, 0).normalize(), sunAngle * M_PI / 180.0f);
-
 }
 
 void SkyRenderer::render(YVbo* sunVbo, const float sunScale, const float sunDistance)
@@ -44,28 +43,41 @@ void SkyRenderer::render(YVbo* sunVbo, const float sunScale, const float sunDist
 
 	YVec3f camPos = renderer->Camera->Position;
 	glTranslatef(camPos.X, camPos.Y, camPos.Z);
-	glRotatef(sunAngle, -1, 0.5, 0);
-	glTranslatef(0, 0, 20);
-	glScalef(sunScale, sunScale, sunScale);
-	glRotatef(-sunAngle, -1, 0.5, 0);
 
 	// Tracé du soleil
-	glUseProgram(ShaderSun); //Demande au GPU de charger ces shaders
-	GLuint shaderSun_sunColor = glGetUniformLocation(ShaderSun, "sun_color");
-	glUniform3f(shaderSun_sunColor, outerSunColor.R, outerSunColor.V, outerSunColor.B);
+	drawSun(sunVbo, sunAngle, sunScale, sunDistance, outerSunColor, innerSunColor);
 
-	renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
-	renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
-	sunVbo->render(); //Demande le rendu du VBO
-
-	glUniform3f(shaderSun_sunColor, innerSunColor.R, innerSunColor.V, innerSunColor.B);
-	glScalef(0.8f, 0.8f, 0.8f);
-	renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
-	renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
-	sunVbo->render(); //Demande le rendu du VBO
+	// Tracé de la lune
+	drawSun(sunVbo, sunAngle + 180, sunScale * 0.625, sunDistance, outerMoonColor, innerMoonColor);
 
 	glPopMatrix();
 	glEnable(GL_DEPTH_TEST);
+}
+
+void SkyRenderer::drawSun(YVbo *sunVbo, const float angle, const float scale, const float distance, const YColor &outerColor, const YColor &innerColor)
+{
+	YRenderer* renderer = YRenderer::getInstance();
+
+	glUseProgram(ShaderSun);
+	GLuint shaderSun_sunColor = glGetUniformLocation(ShaderSun, "sun_color");
+
+	glPushMatrix();
+		glRotatef(angle, -1, 0.5, 0);
+		glTranslatef(0, 0, distance);
+		glScalef(scale, scale, scale);
+		glRotatef(-angle, -1, 0.5, 0);
+
+		glUniform3f(shaderSun_sunColor, outerColor.R, outerColor.V, outerColor.B);
+		renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
+		renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
+		sunVbo->render(); //Demande le rendu du VBO
+
+		glUniform3f(shaderSun_sunColor, innerColor.R, innerColor.V, innerColor.B);
+		glScalef(0.8f, 0.8f, 0.8f);
+		renderer->updateMatricesFromOgl(); //Calcule toute les matrices à partir des deux matrices OGL
+		renderer->sendMatricesToShader(ShaderSun); //Envoie les matrices au shader
+		sunVbo->render(); //Demande le rendu du VBO
+	glPopMatrix();
 }
 
 void SkyRenderer::updateSunProgressT(const uint64_t timeOffsetMillis)
@@ -96,7 +108,7 @@ void SkyRenderer::updateSunAndSkyColors()
 	// Sky Color
 	float sunAppearanceSkyColorT = (0.5 - distToZenith) / distToZenithTransitionColorRange;
 	YColor brightSkyColor(0.4f, 0.85f, 1, 1);
-	YColor darkSkyColor(0.1f, 0.15f, 0.4f, 1);
+	YColor darkSkyColor(0.025f, 0.05f, 0.125f, 1);
 	YColor sunAppearanceSkyColor(0.8f, 0.5f, 0.3f, 1);
 
 	if (sunAppearanceSkyColorT > 0)
@@ -115,6 +127,10 @@ void SkyRenderer::updateSunAndSkyColors()
 	outerSunColor = sunAppearanceColor.interpolate(baseSunColor, sunAppearanceColorT);
 	innerSunColor = outerSunColor.interpolate(white, 0.25f);
 	lightingSunColor = outerSunColor.interpolate(white, 0.75f);
+
+	// Moon Color
+	outerMoonColor = YColor(0.2, 0.35, 0.5, 1);
+	innerMoonColor = YColor(0.75, 0.8, 0.85, 1);
 
 	// Ambient Color
 	YColor brightAmbientColor(0.6f, 0.65f, 0.7f, 1);

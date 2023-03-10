@@ -145,7 +145,7 @@ public :
 				for(int z=0;z<MAT_HEIGHT;z++)
 					Chunks[x][y][z]->reset();
 
-		//G�n�rer ici le monde en modifiant les cubes
+		//Generer ici le monde en modifiant les cubes
 		//Utiliser getCubes()
 		srand(seed);
 		CustomPerlin noise;
@@ -281,12 +281,12 @@ public :
 	{
 		// Parameters
 		static const float minXAngle = degToRad(-70.0f);
-		static const float maxXAngle = degToRad(-10.0f);
+		static const float maxXAngle = degToRad(-15.0f);
 
 		static const float maxXAngleChange = degToRad(15.0f);
 		static const float maxZAngleChange = degToRad(36.0f);
 
-		static const float stepLength = 1.375f;
+		static const float stepLength = 1.125f;
 
 		// Initialize worm
 		// > Generate unique seed for worm's RNG

@@ -15,19 +15,20 @@ uniform mat4 p;
 
 uniform float elapsed;
 uniform vec3 camera_pos;
+
 uniform vec3 sun_color;
 uniform vec3 sun_light_color;
+uniform vec3 sun_direction;
+
 uniform vec3 ambient_color;
 uniform vec3 fog_color;
-uniform vec3 sun_direction;
-uniform vec2 near_far;
-uniform float inv_shadowmap_size;
 
 #define SHADOW_CASCADE_COUNT 4
 uniform sampler2DShadow shadow_map[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far[SHADOW_CASCADE_COUNT];
 uniform float shadow_cascade_far_clip_z[SHADOW_CASCADE_COUNT];
 uniform mat4 shadow_vp[SHADOW_CASCADE_COUNT];
+uniform float inv_shadowmap_size;
 
 layout(location=1) out vec4 normal_out;
 layout(location=2) out vec4 color_out;
@@ -102,7 +103,7 @@ void main()
 
 	vec3 viewVec = normalize(camera_pos - worldPos.xyz);
 	vec3 sunDir = normalize(sun_direction);
-	vec3 sunHalfVec = normalize(viewVec + sunDir); 
+	vec3 sunHalfVec = normalize(viewVec + sunDir);
 
 	float sunLightDiffuse = max(0, dot(sunDir, noiseNormal));
 

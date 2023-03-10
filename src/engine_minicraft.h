@@ -137,7 +137,7 @@ public:
 
 		uvMapper = new AtlasUVMapper();
 		World = new MWorld(uvMapper);
-		World->init_world(0);
+		World->init_world(2);
 
 		avatar = new MAvatar(Renderer->Camera, World);
 
@@ -452,7 +452,7 @@ public:
 		renderAxii();
 
 		// Rendu du ciel et du soleil
-		skyRenderer.render(VboCube, 1, 10);
+		skyRenderer.render(VboCube, 1, 20);
 
 		// Rendu de l'avatar
 		renderAvatar();
@@ -674,21 +674,8 @@ public:
 	void loadWorldShader(GLuint shader)
 	{
 		glUseProgram(shader);
-		GLuint shader_sunColor = glGetUniformLocation(shader, "sun_color");
-		glUniform3f(shader_sunColor, skyRenderer.outerSunColor.R, skyRenderer.outerSunColor.V, skyRenderer.outerSunColor.B);
-		GLuint shader_sunLightColor = glGetUniformLocation(shader, "sun_light_color");
-		glUniform3f(shader_sunLightColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
-		GLuint shader_fogColor = glGetUniformLocation(shader, "fog_color");
-		glUniform3f(shader_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
-		GLuint shader_ambientColor = glGetUniformLocation(shader, "ambient_color");
-		glUniform3f(shader_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
-		GLuint shader_sunDirection = glGetUniformLocation(shader, "sun_direction");
-		glUniform3f(shader_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
-		YVec3f cameraPos = Renderer->Camera->Position;
-		GLuint shader_cameraPos = glGetUniformLocation(shader, "camera_pos");
-		glUniform3f(shader_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
 
-		// Shadow map data
+		// Sun shadow map data
 		GLuint shader_invShadowmapSize = glGetUniformLocation(shader, "inv_shadowmap_size");
 		glUniform1f(shader_invShadowmapSize, 1.0 / SHADOWMAP_SIZE);
 		for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
@@ -700,6 +687,22 @@ public:
 			shadowFbos[i]->setDepthAsShaderInput(GL_TEXTURE1 + i, ("shadow_map[" + std::to_string(i) + "]").c_str());
 		}
 
+		// Sun data
+		GLuint shader_sunColor = glGetUniformLocation(shader, "sun_color");
+		glUniform3f(shader_sunColor, skyRenderer.outerSunColor.R, skyRenderer.outerSunColor.V, skyRenderer.outerSunColor.B);
+		GLuint shader_sunLightColor = glGetUniformLocation(shader, "sun_light_color");
+		glUniform3f(shader_sunLightColor, skyRenderer.lightingSunColor.R, skyRenderer.lightingSunColor.V, skyRenderer.lightingSunColor.B);
+		GLuint shader_sunDirection = glGetUniformLocation(shader, "sun_direction");
+		glUniform3f(shader_sunDirection, skyRenderer.sunDirection.X, skyRenderer.sunDirection.Y, skyRenderer.sunDirection.Z);
+
+		// Other data
+		GLuint shader_ambientColor = glGetUniformLocation(shader, "ambient_color");
+		glUniform3f(shader_ambientColor, skyRenderer.ambientColor.R, skyRenderer.ambientColor.V, skyRenderer.ambientColor.B);
+		GLuint shader_fogColor = glGetUniformLocation(shader, "fog_color");
+		glUniform3f(shader_fogColor, skyRenderer.skyColor.R, skyRenderer.skyColor.V, skyRenderer.skyColor.B);
+		YVec3f cameraPos = Renderer->Camera->Position;
+		GLuint shader_cameraPos = glGetUniformLocation(shader, "camera_pos");
+		glUniform3f(shader_cameraPos, cameraPos.X, cameraPos.Y, cameraPos.Z);
 		Renderer->sendNearFarToShader(shader);
 	}
 

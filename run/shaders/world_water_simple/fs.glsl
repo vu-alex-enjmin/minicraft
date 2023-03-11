@@ -53,7 +53,7 @@ float getNoise(vec2 pos)
 
 vec3 getNoiseNormal(vec2 pos)
 {
-	float delta = 0.001;
+	float delta = 0.025;
 	float corner1Noise = getNoise(pos + vec2(-delta, -delta));
 	float corner2Noise = getNoise(pos + vec2(delta, -delta));
 	float corner3Noise = getNoise(pos + vec2(-delta, delta));
@@ -96,7 +96,14 @@ float getShadowValue()
 
 void main()
 {
+	const vec3 worldUp = vec3(0, 0, 1);
 	vec3 noiseNormal = getNoiseNormal(worldPos.xy);
+	vec3 baseNormal = normalize(normal);
+	vec3 actualNormal = mix(
+		baseNormal, 
+		noiseNormal, 
+		max(0, dot(worldUp, baseNormal))
+	);
 
 	float shadowValue = getShadowValue();
 	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
@@ -106,11 +113,11 @@ void main()
 	vec3 sunDir = normalize(sun_direction);
 	vec3 sunHalfVec = normalize(viewVec + sunDir); 
 
-	float sunLightDiffuse = max(0, dot(sunDir, noiseNormal));
+	float sunLightDiffuse = max(0, dot(sunDir, actualNormal));
 
 	float sunLightSpecular;
 	if (sunLightDiffuse > 0)
-		sunLightSpecular = max(0, dot(sunHalfVec, noiseNormal));
+		sunLightSpecular = max(0, dot(sunHalfVec, actualNormal));
 	else
 		sunLightSpecular = 0;
 	sunLightSpecular = pow(sunLightSpecular, 250);

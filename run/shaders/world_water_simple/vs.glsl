@@ -56,7 +56,7 @@ void main()
 	gl_Position = (p * v) * worldPos;
 	actualClipZ = gl_Position.z;
 	
-	normal = (nmat * vec4(vs_normal_in, 1.0)).xyz; 
+	normal = (nmat * vec4(vs_normal_in, 0.0)).xyz; 
 
 	uv = vs_uv_in;
 	ao = vs_ao_in;

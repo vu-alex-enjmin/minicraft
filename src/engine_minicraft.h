@@ -111,11 +111,11 @@ public:
 		ShaderCubeDebug = Renderer->createProgram("shaders/cube_debug");
 		ShaderCube = Renderer->createProgram("shaders/cube");
 		ShaderWorld = Renderer->createProgram("shaders/world");
-		ShaderShadows = Renderer->createProgram("shaders/shadows");
-		ShaderShadowsCutout = Renderer->createProgram("shaders/shadows_cutout");
 		ShaderWorldOpaque = Renderer->createProgram("shaders/world_opaque");
 		ShaderWorldWater = Renderer->createProgram("shaders/world_water");
 		ShaderWorldWaterSimple = Renderer->createProgram("shaders/world_water_simple");
+		ShaderShadows = Renderer->createProgram("shaders/shadows");
+		ShaderShadowsCutout = Renderer->createProgram("shaders/shadows_cutout");
 		ShaderVignettePP = Renderer->createProgram("shaders/postprocess/vignette");
 		ShaderChromaticAberrationPP = Renderer->createProgram("shaders/postprocess/chromatic_aberration");
 		ShaderWaterEffectsPP = Renderer->createProgram("shaders/postprocess/water_effects");
@@ -145,7 +145,7 @@ public:
 
 		uvMapper = new AtlasUVMapper();
 		World = new MWorld(uvMapper);
-		World->init_world(2);
+		World->init_world(6);
 
 		avatar = new MAvatar(Renderer->Camera, World);
 
@@ -297,7 +297,7 @@ public:
 		//Creation du VBO
 		VboCube = new YVbo(3, 36, YVbo::PACK_BY_ELEMENT_TYPE);
 
-		//D�finition du contenu du VBO
+		//Definition du contenu du VBO
 		float normals[3 * 6] =
 		{
 			1, 0, 0,
@@ -354,7 +354,7 @@ public:
 		VboCube->setElementDescription(1, YVbo::Element(3)); //Normale
 		VboCube->setElementDescription(2, YVbo::Element(2)); //UV
 
-		//On demande d'allouer la m�moire cot� CPU
+		//On demande d'allouer la memoire cote CPU
 		VboCube->createVboCpu();
 
 		Point corners[4];
@@ -380,7 +380,7 @@ public:
 		//On envoie le contenu au GPU
 		VboCube->createVboGpu();
 
-		//On relache la m�moire CPU
+		//On relache la memoire CPU
 		VboCube->deleteVboCpu();
 	}
 
@@ -399,9 +399,9 @@ public:
 
 	void addPoint(Point& p)
 	{
-		VboCube->setElementValue(0, pointCount, p.x, p.y, p.z); //Sommet (li� au layout(0) du shader)
-		VboCube->setElementValue(1, pointCount, p.nX, p.nY, p.nZ);   //Normale (li� au layout(1) du shader)
-		VboCube->setElementValue(2, pointCount, p.u, p.v);      //UV (li� au layout(2) du shader)
+		VboCube->setElementValue(0, pointCount, p.x, p.y, p.z); //Sommet (lie au layout(0) du shader)
+		VboCube->setElementValue(1, pointCount, p.nX, p.nY, p.nZ);   //Normale (lie au layout(1) du shader)
+		VboCube->setElementValue(2, pointCount, p.u, p.v);      //UV (lie au layout(2) du shader)
 		pointCount++;
 	}
 
@@ -663,7 +663,7 @@ public:
 			glTranslatef(avatar->Position.X, avatar->Position.Y, avatar->Position.Z);
 			glScalef(0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE, 0.5 * MCube::CUBE_SIZE);
 			glScalef(avatar->Width, avatar->Width, avatar->Height);
-			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices � partir des deux matrices OGL
+			Renderer->updateMatricesFromOgl(); //Calcule toute les matrices a partir des deux matrices OGL
 			Renderer->sendMatricesToShader(ShaderCube); //Envoie les matrices au shader
 			VboCube->render(); //Demande le rendu du VBO
 		glPopMatrix();
@@ -948,8 +948,6 @@ public:
 
 	void keyPressed(int key, bool special, bool down, int p1, int p2)
 	{
-		// std::cout << "KEY PRESS " << key << " "  << special << " " << p1 << std::endl;
-
 		if (!special)
 		{
 			// OTHER KEYS

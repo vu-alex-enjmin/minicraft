@@ -67,7 +67,7 @@ void main()
 {
 	float mipmapLevel = min(4, textureQueryLod(tex_atlas, uv).x);
 	vec4 texColor = textureLod(tex_atlas, uv, mipmapLevel);
-	if (texColor.a <= 1e-6)
+	if (texColor.a <= 0.5)
 	{
 		discard;
 	}
@@ -97,24 +97,8 @@ void main()
 	vec3 specular = (shadowValue * sunLightSpecular) * sun_color;
 
 	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
-	// fragAo = 1.0;
 	vec3 litColor = (ambient + diffuse + specular) * fragAo;
-	// litColor = fragAo * (baseColor * 0.25 + baseColor * ambient_color * 0.75);
 	color_out = vec4(litColor, 1.0);
-	
-	// color_out = vec4(baseColor.rgb, 1.0);
-	/*
-	color_out = vec4(fragAo, fragAo, fragAo, 1.0);
-	if (actualClipZ <= shadow_cascade_far_clip_z[0])
-		color_out *= vec4(1, 0.8, 0.8, 1);
-	else if (actualClipZ <= shadow_cascade_far_clip_z[1])
-		color_out *= vec4(0.8, 1, 0.8, 1);
-	else if (actualClipZ <= shadow_cascade_far_clip_z[2])
-		color_out *= vec4(0.8, 0.8, 1, 1);
-	else if (actualClipZ <= shadow_cascade_far_clip_z[3])
-		color_out *= vec4(1, 1, 0.8, 1);
-	color_out.rgb *= shadowValue;
-	*/
 
 	color_out = vec4(mix(color_out.rgb, fog_color, fogFactor), color_out.a);
 }

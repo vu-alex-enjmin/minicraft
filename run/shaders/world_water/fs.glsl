@@ -110,7 +110,6 @@ void main()
 
 	float shadowValue = getShadowValue();
 	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
-	// fragAo = 1.0;
 
 	vec3 viewVec = normalize(camera_pos - worldPos.xyz);
 	vec3 sunDir = normalize(sun_direction);

@@ -21,17 +21,16 @@ out vec4 color;
 out vec2 uv;
 out float type;
 out float ao;
-out float normalizedDistToCamera;
 
 #define CUBE_HERBE 0.0
 #define CUBE_TERRE 1.0
 #define CUBE_PIERRE 3.0
 #define CUBE_EAU 4.0
 #define CUBE_SABLE_01 17.0
-#define CUBE_LAINE_01 19.0
+#define CUBE_BRANCHES 38.0
 
-#define WORLD_SIZE (64.0 * 4.0)
-#define MAX_HEIGHT (64.0 * 2.0 + 32.0)
+#define WORLD_SIZE (64.0 * 3.0)
+#define MAX_HEIGHT (64.0 * 3.0)
 
 void main()
 {
@@ -39,31 +38,34 @@ void main()
 	worldPos = m * vecIn;
 	
 	// > Vagues
-	// vecIn.z += sin(elapsed * 5 + worldPos.x * 0.125) * 1;
-	// gl_Position = mvp * vecIn;
+	// worldPos.z += sin(elapsed * 5 + worldPos.x * 0.125) * 1;
 
 	// > Inception
-	// float normalizedX = (worldPos.x) / (WORLD_SIZE);
-	// float normalizedZ = (worldPos.z) / (MAX_HEIGHT);
-	// worldPos = vec4(
-	// 	MAX_HEIGHT * (1.0 - normalizedZ) * cos(normalizedX * 2.0 * 3.14159265359 + 3.14159265359 * 0.5), 
-	// 	worldPos.y, 
-	// 	MAX_HEIGHT * (1.0 - normalizedZ) * sin(normalizedX * 2.0 * 3.14159265359 + 3.14159265359 * 0.5), 
-	// 	worldPos.w
-	// );
+	/*
+	float normalizedX = (worldPos.x) / (WORLD_SIZE);
+	float normalizedZ = (worldPos.z) / (MAX_HEIGHT);
+	worldPos = vec4(
+	 	MAX_HEIGHT * (1.0 - normalizedZ) * cos(normalizedX * 2.0 * 3.14159265359 + 3.14159265359 * 0.5 + elapsed * 0.25), 
+	 	worldPos.y, 
+	 	MAX_HEIGHT * (1.0 - normalizedZ) * sin(normalizedX * 2.0 * 3.14159265359 + 3.14159265359 * 0.5 + elapsed * 0.25), 
+	 	worldPos.w
+	);
+	*/
 
 	// > Effet planète
-	// vec3 relativePos = worldPos.xyz - camera_pos.xyz;
-	// float normalizedX = (relativePos.x) / (WORLD_SIZE);
-	// float normalizedY = (relativePos.y) / (WORLD_SIZE);
-	// float normalizedDist = length(vec2(normalizedX, normalizedY));
-	// float normalizedZ = (worldPos.z) / (MAX_HEIGHT);
-	// worldPos = vec4(
-	// 	worldPos.x,
-	// 	worldPos.y, 
-	// 	worldPos.z - (normalizedDist * normalizedDist) * 1000,
-	// 	worldPos.w
-	// );
+	/*
+	vec3 relativePos = worldPos.xyz - camera_pos.xyz;
+	float normalizedX = (relativePos.x) / (WORLD_SIZE);
+	float normalizedY = (relativePos.y) / (WORLD_SIZE);
+	float normalizedDist = length(vec2(normalizedX, normalizedY));
+	float normalizedZ = (worldPos.z) / (MAX_HEIGHT);
+	worldPos = vec4(
+	 	worldPos.x,
+	 	worldPos.y, 
+		worldPos.z - (normalizedDist * normalizedDist) * 500,
+		worldPos.w
+	);
+	*/
 	
 	gl_Position = (p * v) * worldPos;
 	
@@ -86,11 +88,8 @@ void main()
 		color = vec4(0.0, 0.5, 1.0, 0.7);
 	if(vs_type_in == CUBE_SABLE_01)
 		color = vec4(0.75, 0.75, 0.65, 1.0);
-	if(vs_type_in == CUBE_LAINE_01)
-		color = vec4(1.0, 1.0, 1.0, 1.0);
-
-	normalizedDistToCamera = clamp(length(worldPos.xyz - camera_pos) / (WORLD_SIZE * 0.5), 0.0, 1.0);
-	normalizedDistToCamera = normalizedDistToCamera * normalizedDistToCamera;
+	if(vs_type_in == CUBE_BRANCHES)
+		color = vec4(0.075, 0.25, 0.1, 1);
 	
 	type = vs_type_in;
 }

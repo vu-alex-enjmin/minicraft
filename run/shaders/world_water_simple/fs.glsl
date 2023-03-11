@@ -107,7 +107,6 @@ void main()
 
 	float shadowValue = getShadowValue();
 	float fragAo = 1 - (1 - ao) * (1 - ao) * 0.75;
-	// fragAo = 1.0;
 
 	vec3 viewVec = normalize(camera_pos - worldPos.xyz);
 	vec3 sunDir = normalize(sun_direction);
@@ -133,10 +132,4 @@ void main()
 	vec4 waterColor = vec4(diffuse + ambient, color.a) + specular;
 	color_out = waterColor;
 	color_out = vec4(mix(color_out.rgb, fog_color, fogFactor), color_out.a);
-
-	/*
-	float noiseValue = getNoise(worldPos.xy);
-	noiseValue = noiseValue * 0.5 + 0.5;
-	color_out = vec4(vec3(noiseValue), 1.0);
-	*/
 }

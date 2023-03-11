@@ -36,7 +36,7 @@ public :
 	
 	MWorld(AtlasUVMapper *uvMapper)
 	{
-		//On cr�e les chunks
+		//On cree les chunks
 		for(int x=0;x<MAT_SIZE;x++)
 			for(int y=0;y<MAT_SIZE;y++)
 				for(int z=0;z<MAT_HEIGHT;z++)
@@ -286,7 +286,7 @@ public :
 		static const float maxXAngleChange = degToRad(15.0f);
 		static const float maxZAngleChange = degToRad(36.0f);
 
-		static const float stepLength = 1.125f;
+		static const float stepLength = 0.975f;
 
 		// Initialize worm
 		// > Generate unique seed for worm's RNG
@@ -353,7 +353,7 @@ public :
 	{
 		// > Compute carving parameters
 		static const float wormMaxRadius = 4.5f;
-		static const float wormMinRadius = 0.75f;
+		static const float wormMinRadius = 1.25f;
 		static const float wormMiddleRadius = lerp(wormMinRadius, wormMaxRadius, 0.5);
 		static const float radiusNoiseInfluence = 0.75f;
 
@@ -753,7 +753,7 @@ public :
 					if (getCube(x, y, z)->isSolid())
 					{
 						YVec3f toCube = YVec3f(x + 0.5, y + 0.5, z + 0.5) - adjustedOrigin;
-						if (toCube.dot(direction) >= 0.0f) // Ignore les cubes derri�re le joueur
+						if (toCube.dot(direction) >= 0.0f) // Ignore les cubes derriere le joueur
 						{
 							currentTntersectionSide = lineUnitCubeIntersection(adjustedOrigin, direction, x, y, z, currentIntersection, currentIntersectionT, maxDist);
 							if (currentTntersectionSide)

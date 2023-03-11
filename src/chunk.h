@@ -6,7 +6,7 @@
 #include "atlas_uv_mapper.h"
 
 #define FOUR_CORNERS(a,b,c,d) corners[a],corners[d],corners[c],corners[b]
-// Syst�me d'occlusion ambiante tir�e de cet article : https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
+// Systeme d'occlusion ambiante tiree de cet article : https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
 #define EIGHT_AO_NEIGHBOURS(a,b,c,d,e,f,g,h) aoNeighbours[a], aoNeighbours[b], aoNeighbours[c], aoNeighbours[d], aoNeighbours[e], aoNeighbours[f], aoNeighbours[g], aoNeighbours[h]
 #define AO_VALUE(side1,side2,corner) ((side1 && side2) ? 0 : (3 - (side1 + side2 + corner)))
 #define AO_FLOAT(aoInt) (aoInt/3.0f)

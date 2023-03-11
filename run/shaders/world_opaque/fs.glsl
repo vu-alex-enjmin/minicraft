@@ -65,7 +65,8 @@ float getShadowValue()
 
 void main()
 {
-	vec4 texColor = textureLod(tex_atlas, uv, 0);
+	float mipmapLevel = min(4, textureQueryLod(tex_atlas, uv).x);
+	vec4 texColor = textureLod(tex_atlas, uv, mipmapLevel);
 	if (texColor.a <= 1e-6)
 	{
 		discard;
